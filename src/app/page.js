@@ -1,106 +1,166 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { BookOpen, ChefHat, Search, FileText, ClipboardList } from 'lucide-react';
+import { 
+  Search, 
+  Instagram, 
+  ChefHat, 
+  Clock, 
+  Utensils, 
+  ExternalLink,
+  Flame
+} from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
-export default function SousChefDashboard() {
-  const [guides, setGuides] = useState([]);
+export default function CulinaryArchive() {
+  const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    async function fetchGuides() {
+    async function fetchData() {
       if (!supabase) return;
       try {
+        // Corrected to use your 'recipes' table
         const { data, error } = await supabase
-          .from('guides')
+          .from('recipes')
           .select('*')
-          .order('category', { ascending: true });
+          .order('created_at', { ascending: false });
 
-        if (!error) setGuides(data || []);
+        if (error) throw error;
+        setRecipes(data || []);
       } catch (err) {
-        console.error("Fetch error:", err.message);
+        console.error("Archive fetch error:", err.message);
       } finally {
         setLoading(false);
       }
     }
-    fetchGuides();
+    fetchData();
   }, []);
 
-  const filteredGuides = guides.filter(guide => 
-    guide.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    guide.category?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRecipes = recipes.filter(recipe => 
+    recipe.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    recipe.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    recipe.station?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12">
-      {/* --- HEADER --- */}
-      <header className="max-w-7xl mx-auto mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full text-sm font-bold border border-orange-500/20">
-            <ChefHat size={16} /> INTERNAL SYSTEMS
+    <main className="min-h-screen bg-[#050505] text-slate-200 p-6 md:p-12 font-sans">
+      {/* --- PRIVATE HEADER --- */}
+      <header className="max-w-6xl mx-auto mb-16 space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-orange-500 p-2 rounded-lg">
+              <ChefHat className="text-white" size={24} />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Culinary <span className="text-orange-500">Archive</span>
+            </h1>
           </div>
-          <h1 className="text-5xl font-extrabold tracking-tight">
-            Sous Chef <span className="text-orange-500">Web</span>
-          </h1>
-          <p className="text-slate-400 text-lg max-w-md">
-            The central hub for Square Bar culinary procedures and station guides.
-          </p>
+          <div className="hidden md:block text-[10px] uppercase tracking-[0.2em] text-slate-500 border border-slate-800 px-4 py-1.5 rounded-full">
+            Private Database • {recipes.length} Entries
+          </div>
         </div>
-        
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-4 text-slate-500" size={20} />
+
+        <div className="relative">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
           <input 
             type="text" 
-            placeholder="Find a guide or procedure..." 
+            placeholder="Search by recipe, station (e.g. Sauté), or category..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all text-white"
+            className="w-full bg-[#0f0f0f] border border-white/5 rounded-2xl py-5 pl-14 pr-6 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all text-white placeholder:text-slate-600 shadow-2xl"
           />
         </div>
       </header>
 
-      {/* --- RESOURCE GRID --- */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* --- RECIPE CARD GRID --- */}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
-          [1, 2, 3].map((i) => (
-            <div key={i} className="h-48 bg-slate-900/30 rounded-2xl border border-slate-800 animate-pulse" />
+          [1, 2, 3, 6].map((i) => (
+            <div key={i} className="h-80 bg-white/5 rounded-3xl border border-white/5 animate-pulse" />
           ))
-        ) : filteredGuides.length > 0 ? (
-          filteredGuides.map((guide) => (
+        ) : filteredRecipes.length > 0 ? (
+          filteredRecipes.map((recipe) => (
             <div 
-              key={guide.id} 
-              className="group bg-slate-900/40 backdrop-blur-sm rounded-2xl p-6 border border-slate-800 hover:border-orange-500/40 transition-all cursor-pointer"
+              key={recipe.id} 
+              className="group bg-[#0f0f0f] rounded-3xl border border-white/5 overflow-hidden hover:border-orange-500/30 transition-all duration-500 flex flex-col shadow-lg"
             >
-              <div className="flex items-start justify-between mb-6">
-                <div className="p-3 bg-slate-800 rounded-xl text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                  {guide.category === 'Operations' ? <ClipboardList size={24} /> : <FileText size={24} />}
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800/50 px-2 py-1 rounded">
-                  {guide.category}
-                </span>
+              {/* Card Top: Image / Final Plate URL */}
+              <div className="aspect-[4/3] bg-slate-900 relative overflow-hidden">
+                {recipe.final_plate_url ? (
+                  <img 
+                    src={recipe.final_plate_url} 
+                    alt={recipe.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-800">
+                    <Utensils size={48} />
+                  </div>
+                )}
+                
+                {/* Station Badge */}
+                {recipe.station && (
+                  <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-md border border-white/10">
+                    {recipe.station}
+                  </div>
+                )}
+
+                {/* Source Icon (Instagram) */}
+                {recipe.source_url?.includes('instagram.com') && (
+                  <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-md p-2 rounded-full border border-white/10">
+                    <Instagram size={14} className="text-white" />
+                  </div>
+                )}
               </div>
-              
-              <h3 className="font-bold text-xl mb-2 group-hover:text-white transition-colors">
-                {guide.title}
-              </h3>
-              <p className="text-slate-500 text-sm line-clamp-2 mb-4">
-                {guide.description || 'No additional details provided.'}
-              </p>
-              
-              <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
-                <span className="text-xs text-slate-600 font-medium">By {guide.author}</span>
-                <BookOpen size={16} className="text-slate-700 group-hover:text-orange-500 transition-colors" />
+
+              {/* Card Content */}
+              <div className="p-6 flex-grow space-y-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-orange-500">
+                    {recipe.category || 'General'}
+                  </span>
+                  <h3 className="text-xl font-bold text-white leading-tight">
+                    {recipe.title}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-4 text-slate-500 text-xs">
+                  {recipe.prep_time_minutes && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} />
+                      <span>{recipe.prep_time_minutes}m</span>
+                    </div>
+                  )}
+                  {recipe.yield_amount && (
+                    <div className="flex items-center gap-1">
+                      <Flame size={14} />
+                      <span>Yield: {recipe.yield_amount} {recipe.yield_unit}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Card Footer: Action */}
+              <div className="px-6 pb-6 mt-auto">
+                <a 
+                  href={recipe.source_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-white/5 hover:bg-orange-500 text-white text-xs font-bold uppercase tracking-widest rounded-xl transition-all border border-white/5"
+                >
+                  View Archive Source <ExternalLink size={14} />
+                </a>
               </div>
             </div>
           ))
         ) : (
-          <div className="col-span-full py-20 text-center text-slate-600 border-2 border-dashed border-slate-900 rounded-3xl">
-            <p className="text-lg">No resources found for "{searchQuery}"</p>
+          <div className="col-span-full py-32 text-center border-2 border-dashed border-white/5 rounded-3xl">
+            <p className="text-slate-500 text-lg">No recipes found matching "{searchQuery}"</p>
           </div>
         )}
       </div>
