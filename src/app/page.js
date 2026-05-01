@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import DashboardClient from "./dashboard-client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
