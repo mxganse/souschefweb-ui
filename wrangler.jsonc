@@ -11,7 +11,6 @@
 	],
 	"vars": {
 	  "NEXT_PUBLIC_SUPABASE_URL": "https://qxbjhgejzuxeinrcravj.supabase.co",
-	  // PASTE YOUR ACTUAL KEY BELOW
 	  "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LiOXyQIr7-xgAEFwfqsVEA_ESlCmbO7",
 	  "NEXT_VERSION": "16.2.4"
 	},
