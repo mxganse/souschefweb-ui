@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Search, ChefHat, Utensils, X, ExternalLink, BookOpen, AlertCircle, Globe } from 'lucide-react';
 
+// This line tells Next.js to bypass the Incremental Cache
+export const dynamic = "force-dynamic";
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
@@ -43,18 +46,18 @@ export default function PrivateArchive() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-slate-200 p-6 md:p-12">
+    <div className="min-h-screen bg-[#050505] text-slate-200 p-6 md:p-12 font-sans">
       <header className="max-w-6xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-3">
           <div className="bg-orange-600 p-2 rounded-lg"><ChefHat className="text-white" size={20} /></div>
-          <h1 className="text-xl font-bold uppercase tracking-tighter italic">Archive</h1>
+          <h1 className="text-xl font-bold uppercase tracking-tighter italic text-white">Archive</h1>
         </div>
         <div className="relative w-full md:w-80">
           <Search className="absolute left-4 top-2.5 text-slate-600" size={18} />
           <input 
             type="text" 
             placeholder="Search..." 
-            className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50"
+            className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50 text-white"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
@@ -76,13 +79,13 @@ export default function PrivateArchive() {
             <article 
               key={recipe.id} 
               onClick={() => setSelected(recipe)}
-              className="bg-[#0f0f0f] border border-white/5 rounded-3xl overflow-hidden hover:border-orange-500/30 transition-all cursor-pointer group"
+              className="bg-[#0f0f0f] border border-white/5 rounded-3xl overflow-hidden hover:border-orange-500/40 transition-all cursor-pointer group shadow-lg"
             >
               <div className="aspect-video bg-slate-900 relative">
                 {recipe.final_plate_url ? (
                   <img src={recipe.final_plate_url} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-800"><Utensils size={40} /></div>
+                  <div className="w-full h-full flex items-center justify-center text-slate-800 bg-gradient-to-br from-slate-900 to-black"><Utensils size={40} /></div>
                 )}
                 {recipe.source_url && (
                   <div className="absolute top-4 right-4 text-white/30"><Globe size={16} /></div>
@@ -90,7 +93,7 @@ export default function PrivateArchive() {
               </div>
               <div className="p-6">
                 <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{recipe.station || 'General'}</span>
-                <h3 className="text-lg font-bold text-white mt-1 group-hover:text-orange-400 transition-colors">{recipe.title}</h3>
+                <h3 className="text-lg font-bold text-white mt-1 group-hover:text-orange-400 transition-colors">{recipe.title || 'Untitled'}</h3>
               </div>
             </article>
           ))
