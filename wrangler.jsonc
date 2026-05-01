@@ -3,7 +3,6 @@
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-05-01",
 	"compatibility_flags": ["nodejs_compat"],
-	// 1. ADD YOUR CUSTOM DOMAIN BACK
 	"routes": [
 	  {
 		"pattern": "fig8culinary.com/souschefweb*",
@@ -12,7 +11,7 @@
 	],
 	"vars": {
 	  "NEXT_PUBLIC_SUPABASE_URL": "https://qxbjhgejzuxeinrcravj.supabase.co",
-	  // 2. ADD YOUR ANON KEY HERE
+	  // PASTE YOUR ACTUAL KEY BELOW
 	  "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LiOXyQIr7-xgAEFwfqsVEA_ESlCmbO7",
 	  "NEXT_VERSION": "16.2.4"
 	},
