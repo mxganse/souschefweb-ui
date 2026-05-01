@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Standard imports - Turbopack will handle the "cleaning" automatically
+// Standard Lucide imports - Turbopack handles the optimization
 import { Play, ChefHat, Search } from 'lucide-react';
 
 const supabase = createClient(
@@ -10,21 +10,24 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// ... rest of your component remains the same
-
 export default function SousChefDashboard() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchVideos() {
-      const { data, error } = await supabase
-        .from('videos')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('videos')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (!error) setVideos(data);
-      setLoading(false);
+        if (!error) setVideos(data || []);
+      } catch (err) {
+        console.error("Supabase fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchVideos();
   }, []);
