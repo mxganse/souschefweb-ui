@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: '/souschefweb',
+  assetPrefix: '/souschefweb', // Forces CSS/JS to load from the correct folder
   images: {
     unoptimized: true,
   },
-  // Removed assetPrefix to avoid routing double-dipping
 };
 
 export default nextConfig;
