@@ -1,17 +1,16 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* This tells Next.js that the app is served from /souschefweb.
-     Without this, all your CSS and JS links will break on your custom domain.
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  /* 1. Fixes the 404: Tells Next.js to look for files at /souschefweb 
   */
   basePath: '/souschefweb',
-  
+
+  /* 2. Fixes the 500: Cloudflare Workers don't support Next.js's 
+     default image optimization, which often causes runtime crashes.
+  */
   images: {
-    // Cloudflare Workers don't support the default Next.js image optimizer natively
     unoptimized: true,
   },
 
-  // Ensures compatibility with the 2026 Cloudflare Edge runtime
   experimental: {
     serverActions: {
       allowedOrigins: ['fig8culinary.com', '*.workers.dev'],
@@ -19,9 +18,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
-
-// Keep this for local development with Cursor
+/* 3. Fixes the "reading default" Error:
+   This import is ONLY for your local Cursor environment. 
+   If it runs on Cloudflare, it throws that 'undefined' error.
+*/
 if (process.env.NODE_ENV === 'development') {
   import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());
 }
+
+export default nextConfig;
