@@ -3,12 +3,26 @@
   "name": "souschefweb-ui",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-05-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "vars": {
+  "NEXT_PUBLIC_SUPABASE_URL": "https://qxbjhgejzuxeinrcravj.supabase.co",
+  "NEXT_VERSION": "16.2.4",
+  "BUN_CONFIG_TRUSTED_DEPENDENCIES": "@opennextjs/cloudflare",
+  "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+},
   "observability": {
-    "enabled": true
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false
+    }
   }
 }
