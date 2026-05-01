@@ -4,70 +4,85 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = "force-dynamic";
 
-export default function TestPage() {
+export default function DiagnosticPage() {
   const [items, setItems] = useState([]);
-  const [status, setStatus] = useState("Initializing...");
+  const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
 
+  const addLog = (msg) => setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+
   useEffect(() => {
-    async function checkDB() {
+    async function runDiagnostic() {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      // 1. Check if variables exist before initializing
+      addLog("Starting diagnostic...");
+      
       if (!url || !key) {
-        setError("Environment variables missing. Build succeeded, but runtime keys are not found.");
-        setStatus("Configuration Error");
+        setError("Keys missing in browser environment.");
         return;
       }
 
       try {
-        setStatus("Fetching from 'recipes' table...");
-        
-        // 2. Initialize client ONLY inside the effect
+        addLog("Initializing Supabase client...");
         const supabase = createClient(url, key);
 
+        addLog("Attempting to select from 'recipes' table...");
         const { data, error: dbError } = await supabase
           .from('recipes')
-          .select('title')
-          .limit(5);
+          .select('*') // Changed to * to see everything
+          .limit(3);
 
-        if (dbError) throw dbError;
-        
+        if (dbError) {
+          addLog(`Database Error: ${dbError.message}`);
+          throw dbError;
+        }
+
+        addLog(`Success! Found ${data?.length || 0} rows.`);
         setItems(data || []);
-        setStatus("Connected Successfully");
       } catch (err) {
+        addLog(`Caught Exception: ${err.message}`);
         setError(err.message);
-        setStatus("Connection Failed");
       }
     }
-    checkDB();
+    runDiagnostic();
   }, []);
 
   return (
-    <div style={{ padding: '50px', backgroundColor: '#000', minHeight: '100vh', color: '#fff' }}>
-      <h1 style={{ color: 'orange' }}>System Diagnostic</h1>
-      <p><strong>Current Status:</strong> {status}</p>
+    <div style={{ padding: '40px', backgroundColor: '#050505', color: '#fff', minHeight: '100vh', fontFamily: 'monospace' }}>
+      <h1 style={{ color: '#f97316', borderBottom: '1px solid #333', paddingBottom: '10px' }}>System Audit</h1>
       
-      {error && (
-        <div style={{ border: '1px solid red', padding: '10px', marginTop: '10px', color: '#ff7777' }}>
-          <strong>Error:</strong> {error}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+        
+        {/* LEFT COLUMN: LOGS */}
+        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', border: '1px solid #222' }}>
+          <h3 style={{ marginTop: 0, color: '#666' }}>Process Logs</h3>
+          <div style={{ fontSize: '13px', color: '#888' }}>
+            {logs.map((log, i) => <div key={i} style={{ marginBottom: '5px' }}>{log}</div>)}
+          </div>
+          {error && (
+            <div style={{ marginTop: '20px', padding: '10px', background: '#450a0a', color: '#f87171', borderRadius: '5px', fontSize: '12px' }}>
+              <strong>CRITICAL ERROR:</strong> {error}
+            </div>
+          )}
         </div>
-      )}
-      
-      <hr style={{ borderColor: '#333', margin: '30px 0' }} />
-      
-      <h3>Database Samples:</h3>
-      {items.length === 0 && !error ? <p>No records found (or still loading)...</p> : (
-        <ul>
-          {items.map((item, i) => <li key={i} style={{ marginBottom: '10px' }}>{item.title}</li>)}
-        </ul>
-      )}
 
-      <div style={{ marginTop: '50px', fontSize: '12px', color: '#555' }}>
-        <p>Debug Info:</p>
-        <p>URL Present: {process.env.NEXT_PUBLIC_SUPABASE_URL ? "Yes" : "No"}</p>
-        <p>Key Present: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "Yes" : "No"}</p>
+        {/* RIGHT COLUMN: DATA SAMPLES */}
+        <div style={{ background: '#111', padding: '20px', borderRadius: '10px', border: '1px solid #222' }}>
+          <h3 style={{ marginTop: 0, color: '#666' }}>Data Sample (First 3)</h3>
+          {items.length > 0 ? (
+            <pre style={{ fontSize: '11px', color: '#4ade80', overflow: 'auto' }}>
+              {JSON.stringify(items, null, 2)}
+            </pre>
+          ) : (
+            <p style={{ color: '#444' }}>No data to display.</p>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: '40px', fontSize: '11px', color: '#333' }}>
+        <p>Environment: Cloudflare Worker / Next.js</p>
+        <p>Target Table: recipes</p>
       </div>
     </div>
   );
