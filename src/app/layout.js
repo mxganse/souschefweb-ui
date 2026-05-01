@@ -1,25 +1,17 @@
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "./globals.css"; // This points to src/app/globals.css
+import { Inter } from "next/font/google";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Sous Chef Web",
-  description: "Culinary technique and creator database",
+  title: "Private Culinary Archive",
+  description: "Secure archive for procedures and techniques",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-[#050505] antialiased`}>
         {children}
       </body>
     </html>
