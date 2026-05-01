@@ -3,9 +3,10 @@
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-05-01",
 	"compatibility_flags": ["nodejs_compat"],
-	"routes": [{ "pattern": "fig8culinary.com/souschefweb*", "zone_name": "fig8culinary.com" }],
-	"vars": {
-	  "NEXT_PUBLIC_SUPABASE_URL": "https://qxbjhgejzuxeinrcravj.supabase.co",
-	  "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LiOXyQIr7-xgAEFwfqsVEA_ESlCmbO7"
-	}
+	"routes": [
+	  {
+		"pattern": "fig8culinary.com/souschefweb*",
+		"zone_name": "fig8culinary.com"
+	  }
+	]
   }
