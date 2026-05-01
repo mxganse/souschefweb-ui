@@ -18,7 +18,7 @@ export default function PrivateArchive() {
     async function getEntries() {
       try {
         if (!supabase) {
-          setError("Configuration missing. Check wrangler.jsonc.");
+          setError("Database connection keys missing.");
           return;
         }
         const { data, error: dbError } = await supabase

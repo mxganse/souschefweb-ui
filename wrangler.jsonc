@@ -1,4 +1,4 @@
-{
+  {
 	"name": "souschefweb-ui",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-05-01",
@@ -13,5 +13,11 @@
 	  "NEXT_PUBLIC_SUPABASE_URL": "https://qxbjhgejzuxeinrcravj.supabase.co",
 	  "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_LiOXyQIr7-xgAEFwfqsVEA_ESlCmbO7",
 	  "NEXT_VERSION": "16.2.4"
-	}
+	},
+	"kv_namespaces": [
+	  {
+		"binding": "NEXT_CACHE_WORKERS_KV",
+		"id": "fdebb784da6f403b8c8ef5167c3d3d06"
+	  }
+	]
   }
