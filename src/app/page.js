@@ -1,28 +1,79 @@
-export default function Home() {
+"use client";
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Individual icon imports are safer for the Edge runtime
+import Play from 'lucide-react/dist/esm/icons/play';
+import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
+import Search from 'lucide-react/dist/esm/icons/search';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default function SousChefDashboard() {
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchVideos() {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error) setVideos(data);
+      setLoading(false);
+    }
+    fetchVideos();
+  }, []);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-slate-900 text-white">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
-        <h1 className="text-4xl font-bold mb-8 text-orange-500">
-          Sous Chef Web: Status Check
-        </h1>
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-8">
+      <header className="max-w-7xl mx-auto mb-12 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-orange-500">
+            <ChefHat size={32} /> Sous Chef Web
+          </h1>
+          <p className="text-slate-400 mt-1">West Chester’s Culinary Knowledge Base</p>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          <div className="p-6 border border-slate-700 rounded-xl bg-slate-800">
-            <h2 className="text-xl font-semibold mb-2">Build Environment</h2>
-            <p className="text-slate-400">If you see this, the Page is rendering.</p>
-            <p className="mt-2 text-green-400">✓ Server Component Active</p>
-          </div>
-
-          <div className="p-6 border border-slate-700 rounded-xl bg-slate-800">
-            <h2 className="text-xl font-semibold mb-2">Routing Check</h2>
-            <p className="text-slate-400">Current Path: <span className="text-orange-300">/souschefweb</span></p>
-            <p className="mt-2 text-blue-400">✓ BasePath Configured</p>
-          </div>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-2.5 text-slate-500" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search techniques..." 
+            className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+          />
         </div>
+      </header>
 
-        <div className="mt-12 text-center text-slate-500 italic">
-          Push your real video logic back once this screen is visible at fig8culinary.com/souschefweb
-        </div>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {loading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="h-64 bg-slate-900 rounded-xl animate-pulse" />
+          ))
+        ) : (
+          videos.map((video) => (
+            <div key={video.id} className="group bg-slate-900 rounded-xl overflow-hidden border border-slate-800 hover:border-orange-500/50 transition-all">
+              <div className="aspect-video bg-slate-800 relative flex items-center justify-center">
+                <Play className="text-white opacity-50 group-hover:opacity-100 transition-opacity" size={48} />
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-lg">{video.title}</h3>
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded-full border border-orange-500/20">
+                    {video.technique}
+                  </span>
+                  <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded-full">
+                    {video.creator}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </main>
   );
