@@ -2,15 +2,15 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Individual icon imports are safer for the Edge runtime
-import Play from 'lucide-react/dist/esm/icons/play';
-import ChefHat from 'lucide-react/dist/esm/icons/chef-hat';
-import Search from 'lucide-react/dist/esm/icons/search';
+// Standard imports - Turbopack will handle the "cleaning" automatically
+import { Play, ChefHat, Search } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// ... rest of your component remains the same
 
 export default function SousChefDashboard() {
   const [videos, setVideos] = useState([]);
