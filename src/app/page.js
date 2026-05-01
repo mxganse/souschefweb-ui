@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, ChefHat, Utensils, X, ExternalLink, BookOpen, AlertCircle } from 'lucide-react';
+import { Search, ChefHat, Utensils, X, ExternalLink, BookOpen, AlertCircle, Instagram } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -18,7 +18,7 @@ export default function PrivateArchive() {
     async function getEntries() {
       try {
         if (!supabase) {
-          setError("Configuration missing (Check wrangler.jsonc)");
+          setError("Database keys not found. Check wrangler.jsonc.");
           return;
         }
         const { data, error: dbError } = await supabase
@@ -31,7 +31,7 @@ export default function PrivateArchive() {
       } catch (err) {
         setError(err.message);
       } finally {
-        setLoading(false); // Removes the 'Accessing Database' message
+        setLoading(false); 
       }
     }
     getEntries();
@@ -47,13 +47,13 @@ export default function PrivateArchive() {
       <header className="max-w-6xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-3">
           <div className="bg-orange-600 p-2 rounded-lg"><ChefHat className="text-white" size={20} /></div>
-          <h1 className="text-xl font-bold uppercase tracking-tighter italic">Archive</h1>
+          <h1 className="text-xl font-bold uppercase tracking-tighter italic">Culinary Archive</h1>
         </div>
         <div className="relative w-full md:w-80">
           <Search className="absolute left-4 top-2.5 text-slate-600" size={18} />
           <input 
             type="text" 
-            placeholder="Search..." 
+            placeholder="Filter by title or station..." 
             className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/50"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -69,7 +69,7 @@ export default function PrivateArchive() {
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
           <div className="col-span-full py-20 text-center text-slate-600 animate-pulse uppercase tracking-[0.3em] text-[10px] font-black">
-            Accessing Database...
+            Connecting to Archive...
           </div>
         ) : filtered.length > 0 ? (
           filtered.map(recipe => (
@@ -84,6 +84,9 @@ export default function PrivateArchive() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-800"><Utensils size={40} /></div>
                 )}
+                {recipe.source_url?.includes('instagram.com') && (
+                  <div className="absolute top-4 right-4 text-white/50"><Instagram size={16} /></div>
+                )}
               </div>
               <div className="p-6">
                 <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{recipe.station || 'General'}</span>
@@ -93,14 +96,14 @@ export default function PrivateArchive() {
           ))
         ) : (
           <div className="col-span-full py-20 text-center text-slate-800 border border-dashed border-white/5 rounded-3xl uppercase text-[10px] font-black tracking-widest">
-            Database Empty
+            No Records Found
           </div>
         )}
       </div>
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={() => setSelected(null)} />
+          <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" onClick={() => setSelected(null)} />
           <div className="relative bg-[#0f0f0f] border border-white/10 w-full max-w-4xl max-h-[80vh] overflow-y-auto rounded-[32px] p-8 md:p-12 shadow-2xl">
             <button onClick={() => setSelected(null)} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X /></button>
             <h2 className="text-3xl font-bold text-white mb-6 uppercase tracking-tight">{selected.title}</h2>
