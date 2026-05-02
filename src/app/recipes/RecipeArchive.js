@@ -5,16 +5,21 @@ import { supabase } from '@/lib/supabase/client'
 const ITEMS_PER_PAGE = 20
 
 const SOURCE_META = {
-  'Instagram Extract': { icon: '📸', label: 'Instagram' },
-  'Web Import':        { icon: '🌐', label: 'Web' },
-  'PDF Import':        { icon: '📄', label: 'PDF' },
-  'Image Import':      { icon: '📷', label: 'Photo' },
-  'Text Import':       { icon: '📝', label: 'Text' },
+  'Instagram Extract':   { icon: '📸', label: 'Instagram' },
+  'Instagram Extraction':{ icon: '📸', label: 'Instagram' }, // legacy label
+  'Web Import':          { icon: '🌐', label: 'Web' },
+  'PDF Import':          { icon: '📄', label: 'PDF' },
+  'Image Import':        { icon: '📷', label: 'Photo' },
+  'Text Import':         { icon: '📝', label: 'Text' },
 }
 
 const SOURCE_FILTERS = [
-  { id: 'all', label: 'All' },
-  ...Object.entries(SOURCE_META).map(([id, { icon, label }]) => ({ id, label: `${icon} ${label}` })),
+  { id: 'all',                 label: 'All' },
+  { id: 'Instagram Extract',   label: '📸 Instagram' },
+  { id: 'Web Import',          label: '🌐 Web' },
+  { id: 'PDF Import',          label: '📄 PDF' },
+  { id: 'Image Import',        label: '📷 Photo' },
+  { id: 'Text Import',         label: '📝 Text' },
 ]
 
 function formatDate(iso) {
@@ -163,7 +168,9 @@ export default function RecipeArchive({ initialRecipes }) {
 
   const filtered = initialRecipes
     .filter(r => {
-      if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false
+      if (sourceFilter === 'Instagram Extract') {
+        if (!['Instagram Extract', 'Instagram Extraction'].includes(r.source_type)) return false
+      } else if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false
       if (!search) return true
       const q = search.toLowerCase()
       return (
