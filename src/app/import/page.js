@@ -1,7 +1,5 @@
-import ImportPage from './ImportPage'
+import { redirect } from 'next/navigation'
 
-export const metadata = { title: 'Import Recipes — SousChef' }
-
-export default function Page() {
-  return <ImportPage />
+export default function ImportPage() {
+  redirect('/')
 }

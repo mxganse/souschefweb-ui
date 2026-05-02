@@ -7,6 +7,24 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+const SOURCE_BADGE = {
+  'Instagram Extract': 'bg-orange-950 text-orange-400 border-orange-800',
+  'Web Import':        'bg-blue-950  text-blue-400  border-blue-800',
+  'PDF Import':        'bg-slate-800 text-slate-300 border-slate-600',
+  'Image Import':      'bg-green-950 text-green-400 border-green-800',
+  'Text Import':       'bg-slate-800 text-slate-300 border-slate-600',
+}
+
+function SourceBadge({ type }) {
+  if (!type) return null
+  const cls = SOURCE_BADGE[type] || 'bg-slate-800 text-slate-300 border-slate-600'
+  return (
+    <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border ${cls}`}>
+      {type}
+    </span>
+  )
+}
+
 function RecipeCard({ recipe }) {
   const [text, setText] = useState(recipe.instructions_markdown || '')
   const [saving, setSaving] = useState(false)
@@ -34,10 +52,13 @@ function RecipeCard({ recipe }) {
         <span className="text-[#D35400] mt-0.5 flex-shrink-0">▶</span>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm leading-snug">{recipe.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {formatDate(recipe.created_at)}
-            {recipe.category && recipe.category !== 'Unknown' ? ` · @${recipe.category}` : ''}
-          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="text-xs text-gray-500">{formatDate(recipe.created_at)}</span>
+            {recipe.category && recipe.category !== 'Unknown' && (
+              <span className="text-xs text-gray-500">@{recipe.category}</span>
+            )}
+            <SourceBadge type={recipe.source_type} />
+          </div>
         </div>
       </summary>
 
@@ -123,13 +144,13 @@ export default function RecipeArchive({ initialRecipes }) {
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
           <option value="title">Title A–Z</option>
-          <option value="creator">Creator A–Z</option>
+          <option value="creator">Creator / Source A–Z</option>
         </select>
       </div>
 
       {filtered.length === 0 ? (
         <p className="text-gray-500 text-sm text-center py-12">
-          {search ? 'No recipes match your search.' : 'No recipes yet. Go extract one!'}
+          {search ? 'No recipes match your search.' : 'No recipes yet. Add your first one!'}
         </p>
       ) : (
         <div className="space-y-2">
