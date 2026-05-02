@@ -17,7 +17,13 @@ const REEL_STATUS = {
   saving:      'Saving to database…',
 }
 
-function ImportStatusBox({ error, processing, result }) {
+function ImportStatusBox({ error, duplicate, processing, result }) {
+  if (duplicate) return (
+    <div className="mt-4 p-4 bg-yellow-950 border border-yellow-700 rounded text-sm text-yellow-300 space-y-1">
+      <p>⚠️ {duplicate.error}</p>
+      <a href="/recipes" className="inline-block text-[#D35400] hover:text-[#E67E22] underline">View in Archive →</a>
+    </div>
+  )
   if (error) return (
     <div className="mt-4 p-4 bg-red-950 border border-red-700 rounded text-sm text-red-300 whitespace-pre-wrap">{error}</div>
   )
@@ -116,12 +122,13 @@ function UrlTab() {
   const [url, setUrl] = useState('')
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState(null)
+  const [duplicate, setDuplicate] = useState(null)
   const [result, setResult] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!url.trim()) return
-    setProcessing(true); setError(null); setResult(null)
+    setProcessing(true); setError(null); setDuplicate(null); setResult(null)
     try {
       const res = await fetch('/api/import-recipe', {
         method: 'POST',
@@ -129,6 +136,7 @@ function UrlTab() {
         body: JSON.stringify({ type: 'url', url: url.trim() }),
       })
       const data = await res.json()
+      if (res.status === 409) { setDuplicate(data); return }
       if (!res.ok) throw new Error(data.error || 'Import failed')
       setResult(data); setUrl('')
     } catch (err) { setError(err.message) }
@@ -146,7 +154,7 @@ function UrlTab() {
         className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
         {processing ? 'Importing…' : 'IMPORT RECIPE'}
       </button>
-      <ImportStatusBox error={error} processing={processing} result={result} />
+      <ImportStatusBox error={error} duplicate={duplicate} processing={processing} result={result} />
     </form>
   )
 }
@@ -156,19 +164,21 @@ function FileTab({ type, accept, hint }) {
   const [file, setFile] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState(null)
+  const [duplicate, setDuplicate] = useState(null)
   const [result, setResult] = useState(null)
   const inputRef = useRef()
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!file) return
-    setProcessing(true); setError(null); setResult(null)
+    setProcessing(true); setError(null); setDuplicate(null); setResult(null)
     try {
       const form = new FormData()
       form.append('file', file)
       form.append('type', type)
       const res = await fetch('/api/import-recipe', { method: 'POST', body: form })
       const data = await res.json()
+      if (res.status === 409) { setDuplicate(data); return }
       if (!res.ok) throw new Error(data.error || 'Import failed')
       setResult(data); setFile(null)
       if (inputRef.current) inputRef.current.value = ''
@@ -189,7 +199,7 @@ function FileTab({ type, accept, hint }) {
         className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
         {processing ? 'Importing…' : 'IMPORT RECIPE'}
       </button>
-      <ImportStatusBox error={error} processing={processing} result={result} />
+      <ImportStatusBox error={error} duplicate={duplicate} processing={processing} result={result} />
     </form>
   )
 }
@@ -199,12 +209,13 @@ function TextTab() {
   const [text, setText] = useState('')
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState(null)
+  const [duplicate, setDuplicate] = useState(null)
   const [result, setResult] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!text.trim()) return
-    setProcessing(true); setError(null); setResult(null)
+    setProcessing(true); setError(null); setDuplicate(null); setResult(null)
     try {
       const res = await fetch('/api/import-recipe', {
         method: 'POST',
@@ -212,6 +223,7 @@ function TextTab() {
         body: JSON.stringify({ type: 'text', text: text.trim() }),
       })
       const data = await res.json()
+      if (res.status === 409) { setDuplicate(data); return }
       if (!res.ok) throw new Error(data.error || 'Import failed')
       setResult(data); setText('')
     } catch (err) { setError(err.message) }
@@ -228,7 +240,7 @@ function TextTab() {
         className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
         {processing ? 'Importing…' : 'IMPORT RECIPE'}
       </button>
-      <ImportStatusBox error={error} processing={processing} result={result} />
+      <ImportStatusBox error={error} duplicate={duplicate} processing={processing} result={result} />
     </form>
   )
 }

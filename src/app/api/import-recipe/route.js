@@ -83,6 +83,20 @@ function parseMarkdown(markdown) {
 async function saveToSupabase(title, markdown, ingredients, sourceType, sourceUrl = null) {
   const supabase = createServerClient()
 
+  // Duplicate check (case-insensitive title match)
+  const { data: existing } = await supabase
+    .from('recipes')
+    .select('id, title')
+    .ilike('title', title.trim())
+    .maybeSingle()
+
+  if (existing) {
+    const err = new Error(`"${existing.title}" is already in your archive.`)
+    err.code = 'DUPLICATE'
+    err.existingId = existing.id
+    throw err
+  }
+
   const { data: recipe, error: recipeError } = await supabase
     .from('recipes')
     .insert({
@@ -227,6 +241,9 @@ export async function POST(request) {
     return Response.json({ id, title, ingredients, recipe: markdown })
 
   } catch (err) {
+    if (err.code === 'DUPLICATE') {
+      return Response.json({ error: err.message, duplicate: true, existingId: err.existingId }, { status: 409 })
+    }
     console.error('import-recipe error:', err)
     return Response.json({ error: err.message }, { status: 500 })
   }
