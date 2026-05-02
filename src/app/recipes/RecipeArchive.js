@@ -24,20 +24,19 @@ function RecipeCard({ recipe }) {
   }
 
   function downloadPdf() {
-    // Opens the PDF export API route in a new tab
     const params = new URLSearchParams({ id: recipe.id })
     window.open(`/api/export-pdf?${params}`, '_blank')
   }
 
   return (
     <details className="bg-[#161B22] border border-gray-800 rounded group">
-      <summary className="flex items-start gap-3 p-4 cursor-pointer list-none hover:bg-[#1c2230] transition-colors">
-        <span className="text-[#D35400] mt-0.5">▶</span>
+      <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
+        <span className="text-[#D35400] mt-0.5 flex-shrink-0">▶</span>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm truncate">{recipe.title}</p>
+          <p className="font-bold text-sm leading-snug">{recipe.title}</p>
           <p className="text-xs text-gray-500 mt-0.5">
             {formatDate(recipe.created_at)}
-            {recipe.category ? ` · @${recipe.category}` : ''}
+            {recipe.category && recipe.category !== 'Unknown' ? ` · @${recipe.category}` : ''}
           </p>
         </div>
       </summary>
@@ -48,7 +47,7 @@ function RecipeCard({ recipe }) {
             href={recipe.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-xs text-[#D35400] hover:text-[#E67E22] underline"
+            className="inline-block text-xs text-[#D35400] hover:text-[#E67E22] underline py-1"
           >
             View original source →
           </a>
@@ -58,20 +57,20 @@ function RecipeCard({ recipe }) {
           value={text}
           onChange={e => setText(e.target.value)}
           rows={12}
-          className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-none"
+          className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-base sm:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-none"
         />
 
         <div className="flex gap-3">
           <button
             onClick={saveEdits}
             disabled={saving}
-            className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white text-sm font-bold py-2 rounded transition-colors"
+            className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white text-sm font-bold py-3 rounded transition-colors"
           >
             {saving ? 'Saving...' : saved ? 'Saved ✓' : 'SAVE EDITS'}
           </button>
           <button
             onClick={downloadPdf}
-            className="flex-1 bg-[#D35400] hover:bg-[#E67E22] text-white text-sm font-bold py-2 rounded transition-colors"
+            className="flex-1 bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] text-white text-sm font-bold py-3 rounded transition-colors"
           >
             DOWNLOAD PDF
           </button>
@@ -105,21 +104,21 @@ export default function RecipeArchive({ initialRecipes }) {
 
   return (
     <div>
-      <h1 className="text-3xl font-black text-[#D35400] tracking-tight mb-2">RECIPE ARCHIVE</h1>
-      <p className="text-gray-400 text-sm mb-6">{initialRecipes.length} recipes saved</p>
+      <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight mb-1">RECIPE ARCHIVE</h1>
+      <p className="text-gray-400 text-sm mb-5">{initialRecipes.length} recipes saved</p>
 
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <input
-          type="text"
+          type="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search recipes, creators, ingredients..."
-          className="flex-1 bg-[#161B22] border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors"
+          className="flex-1 bg-[#161B22] border border-gray-700 rounded px-4 py-3 text-base focus:outline-none focus:border-[#D35400] transition-colors"
         />
         <select
           value={sort}
           onChange={e => setSort(e.target.value)}
-          className="bg-[#161B22] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400]"
+          className="bg-[#161B22] border border-gray-700 rounded px-3 py-3 text-base focus:outline-none focus:border-[#D35400] sm:w-40"
         >
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
