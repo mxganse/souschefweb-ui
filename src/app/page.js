@@ -312,12 +312,56 @@ function PhotoTab() {
 
 // ── Bulk Photos ───────────────────────────────────────────────────────────────
 const ITEM_STATUS = {
-  pending:    { icon: '·',  label: 'Pending',    cls: 'text-gray-500'  },
-  extracting: { icon: '◌',  label: 'Reading…',   cls: 'text-blue-400 animate-pulse' },
-  saving:     { icon: '◌',  label: 'Saving…',    cls: 'text-blue-400 animate-pulse' },
-  done:       { icon: '✓',  label: 'Saved',      cls: 'text-green-400' },
-  duplicate:  { icon: '⚠',  label: 'Duplicate',  cls: 'text-yellow-400' },
-  error:      { icon: '✗',  label: 'Error',      cls: 'text-red-400'   },
+  pending:    { icon: '·', cls: 'text-gray-500'   },
+  extracting: { icon: '◌', cls: 'text-blue-400 animate-pulse' },
+  saving:     { icon: '◌', cls: 'text-blue-400 animate-pulse' },
+  done:       { icon: '✓', cls: 'text-green-400'  },
+  duplicate:  { icon: '⚠', cls: 'text-yellow-400' },
+  error:      { icon: '✗', cls: 'text-red-400'    },
+}
+
+function BulkItemRow({ item, running, onRemove }) {
+  const [imgUrl, setImgUrl] = useState(null)
+  const s = ITEM_STATUS[item.status] || ITEM_STATUS.pending
+
+  // Create/revoke blob URL only when item enters error state
+  useState(() => {
+    if (item.status === 'error' && item.file && !imgUrl) {
+      const url = URL.createObjectURL(item.file)
+      setImgUrl(url)
+      return () => URL.revokeObjectURL(url)
+    }
+  })
+
+  return (
+    <div className="bg-[#161B22] border-b border-gray-800 last:border-b-0">
+      <div className="flex items-start gap-2 px-3 py-2 text-sm">
+        <span className={`flex-shrink-0 font-mono mt-0.5 w-4 text-center ${s.cls}`}>{s.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-gray-300">{item.title || item.name}</p>
+          {item.status === 'duplicate' && item.note &&
+            <p className="text-xs text-yellow-600 truncate mt-0.5">{item.note}</p>}
+        </div>
+        {item.status === 'pending' && !running && (
+          <button onClick={() => onRemove(item.id)}
+            className="flex-shrink-0 text-gray-600 hover:text-red-400 text-xs mt-0.5 px-1">✕</button>
+        )}
+      </div>
+      {item.status === 'error' && (
+        <div className="px-3 pb-3 flex gap-3 items-start">
+          {imgUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imgUrl} alt={item.name}
+              className="w-24 h-24 object-cover rounded border border-red-900 flex-shrink-0" />
+          )}
+          <div className="flex-1 min-w-0 pt-0.5">
+            <p className="text-xs font-bold text-red-400 mb-1 truncate">{item.name}</p>
+            <p className="text-xs text-gray-500 leading-relaxed">{item.note || 'Unknown error'}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function BulkPhotoTab() {
@@ -414,23 +458,15 @@ function BulkPhotoTab() {
       {/* Queue list */}
       {items.length > 0 && (
         <div className="border border-gray-800 rounded overflow-hidden">
-          <div className="max-h-64 overflow-y-auto divide-y divide-gray-800">
-            {items.map(item => {
-              const s = ITEM_STATUS[item.status] || ITEM_STATUS.pending
-              return (
-                <div key={item.id} className="flex items-start gap-2 px-3 py-2 bg-[#161B22] text-sm">
-                  <span className={`flex-shrink-0 font-mono mt-0.5 w-4 text-center ${s.cls}`}>{s.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-gray-300">{item.title || item.name}</p>
-                    {item.note && <p className="text-xs truncate mt-0.5 text-gray-500">{item.note}</p>}
-                  </div>
-                  {item.status === 'pending' && !running && (
-                    <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))}
-                      className="flex-shrink-0 text-gray-600 hover:text-red-400 text-xs mt-0.5 px-1">✕</button>
-                  )}
-                </div>
-              )
-            })}
+          <div className="max-h-96 overflow-y-auto">
+            {items.map(item => (
+              <BulkItemRow
+                key={item.id}
+                item={item}
+                running={running}
+                onRemove={id => setItems(p => p.filter(i => i.id !== id))}
+              />
+            ))}
           </div>
         </div>
       )}
