@@ -3,6 +3,7 @@ import './globals.css'
 export const metadata = {
   title: 'SousChef',
   description: 'Add and archive recipes from any source — Instagram, websites, PDFs, photos, or text.',
+  robots: { index: false, follow: false },
 }
 
 export const viewport = {
