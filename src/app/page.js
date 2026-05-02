@@ -6,6 +6,7 @@ const TABS = [
   { id: 'url',   label: 'Website'   },
   { id: 'pdf',   label: 'PDF'       },
   { id: 'image', label: 'Photo'     },
+  { id: 'bulk',  label: 'Bulk'      },
   { id: 'text',  label: 'Text'      },
 ]
 
@@ -309,6 +310,168 @@ function PhotoTab() {
   )
 }
 
+// ── Bulk Photos ───────────────────────────────────────────────────────────────
+const ITEM_STATUS = {
+  pending:    { icon: '·',  label: 'Pending',    cls: 'text-gray-500'  },
+  extracting: { icon: '◌',  label: 'Reading…',   cls: 'text-blue-400 animate-pulse' },
+  saving:     { icon: '◌',  label: 'Saving…',    cls: 'text-blue-400 animate-pulse' },
+  done:       { icon: '✓',  label: 'Saved',      cls: 'text-green-400' },
+  duplicate:  { icon: '⚠',  label: 'Duplicate',  cls: 'text-yellow-400' },
+  error:      { icon: '✗',  label: 'Error',      cls: 'text-red-400'   },
+}
+
+function BulkPhotoTab() {
+  const [items, setItems] = useState([])
+  const [running, setRunning] = useState(false)
+  const [finished, setFinished] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef()
+
+  function addFiles(fileList) {
+    const next = Array.from(fileList)
+      .filter(f => f.type.startsWith('image/'))
+      .map(f => ({ id: Math.random().toString(36).slice(2), file: f, name: f.name, status: 'pending', title: null, note: null }))
+    if (next.length) setItems(prev => [...prev, ...next])
+  }
+
+  function update(id, patch) {
+    setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it))
+  }
+
+  async function processAll() {
+    setRunning(true); setFinished(false)
+    const pending = items.filter(it => it.status === 'pending')
+    for (const item of pending) {
+      // Step 1: extract
+      update(item.id, { status: 'extracting' })
+      let draft
+      try {
+        const form = new FormData()
+        form.append('file', item.file)
+        form.append('type', 'image')
+        const res = await fetch('/api/import-recipe', { method: 'POST', body: form })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Extraction failed')
+        draft = data
+        update(item.id, { title: draft.title || item.name })
+      } catch (err) {
+        update(item.id, { status: 'error', note: err.message }); continue
+      }
+
+      // Step 2: save
+      update(item.id, { status: 'saving' })
+      try {
+        const res = await fetch('/api/save-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(draft),
+        })
+        const data = await res.json()
+        if (res.status === 409) {
+          update(item.id, { status: 'duplicate', note: data.error })
+        } else if (!res.ok) {
+          throw new Error(data.error || 'Save failed')
+        } else {
+          update(item.id, { status: 'done', title: data.title })
+        }
+      } catch (err) {
+        update(item.id, { status: 'error', note: err.message })
+      }
+    }
+    setRunning(false); setFinished(true)
+  }
+
+  const counts = items.reduce((a, it) => { a[it.status] = (a[it.status] || 0) + 1; return a }, {})
+  const pendingCount = counts.pending || 0
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-400">
+        Select multiple recipe photos at once — each image is extracted and saved automatically.
+        Google Drive for Desktop users can select photos directly from their mounted Drive folder.
+      </p>
+
+      {/* Drop zone */}
+      {!running && (
+        <label
+          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg py-8 px-4 cursor-pointer transition-colors bg-[#161B22] ${
+            dragOver ? 'border-[#D35400]' : 'border-gray-700 hover:border-[#D35400]'
+          }`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files) }}
+        >
+          <span className="text-3xl mb-2">📷</span>
+          <span className="text-sm font-bold text-gray-300">
+            {dragOver ? 'Drop photos here' : 'Select or drag photos'}
+          </span>
+          <span className="text-xs text-gray-500 mt-1">JPG, PNG, HEIC, WEBP — multiple files OK</span>
+          <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+            onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+        </label>
+      )}
+
+      {/* Queue list */}
+      {items.length > 0 && (
+        <div className="border border-gray-800 rounded overflow-hidden">
+          <div className="max-h-64 overflow-y-auto divide-y divide-gray-800">
+            {items.map(item => {
+              const s = ITEM_STATUS[item.status] || ITEM_STATUS.pending
+              return (
+                <div key={item.id} className="flex items-start gap-2 px-3 py-2 bg-[#161B22] text-sm">
+                  <span className={`flex-shrink-0 font-mono mt-0.5 w-4 text-center ${s.cls}`}>{s.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-gray-300">{item.title || item.name}</p>
+                    {item.note && <p className="text-xs truncate mt-0.5 text-gray-500">{item.note}</p>}
+                  </div>
+                  {item.status === 'pending' && !running && (
+                    <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))}
+                      className="flex-shrink-0 text-gray-600 hover:text-red-400 text-xs mt-0.5 px-1">✕</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      {finished && items.length > 0 && (
+        <div className="p-3 bg-[#161B22] border border-gray-700 rounded text-sm space-y-1">
+          {counts.done      && <p className="text-green-400">✓ {counts.done} saved</p>}
+          {counts.duplicate && <p className="text-yellow-400">⚠ {counts.duplicate} duplicate{counts.duplicate !== 1 ? 's' : ''} skipped</p>}
+          {counts.error     && <p className="text-red-400">✗ {counts.error} failed</p>}
+          <a href="/recipes" className="inline-block text-sm text-[#D35400] hover:text-[#E67E22] underline pt-1">View Archive →</a>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex gap-3">
+        {running ? (
+          <div className="flex-1 flex items-center justify-center gap-3 py-3 text-sm text-gray-400 bg-[#161B22] rounded border border-gray-800">
+            <span className="inline-block w-4 h-4 border-2 border-[#D35400] border-t-transparent rounded-full animate-spin" />
+            Processing {items.filter(i => i.status === 'extracting' || i.status === 'saving').length > 0
+              ? `${items.findIndex(i => i.status === 'extracting' || i.status === 'saving') + 1} of ${items.length}`
+              : '…'}
+          </div>
+        ) : pendingCount > 0 ? (
+          <button onClick={processAll}
+            className="flex-1 bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] text-white font-bold py-3 rounded transition-colors text-sm">
+            PROCESS {pendingCount} PHOTO{pendingCount !== 1 ? 'S' : ''}
+          </button>
+        ) : null}
+
+        {!running && items.length > 0 && (
+          <button onClick={() => { setItems([]); setFinished(false) }}
+            className="px-5 py-3 bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold rounded transition-colors">
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Paste Text ────────────────────────────────────────────────────────────────
 function TextTab() {
   const [text, setText] = useState('')
@@ -349,7 +512,7 @@ export default function AddRecipePage() {
   return (
     <div className="max-w-xl mx-auto">
       <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight mb-1">ADD RECIPE</h1>
-      <p className="text-gray-400 text-sm mb-6">Extract from Instagram, scrape a website, upload a PDF or photo, or paste text.</p>
+      <p className="text-gray-400 text-sm mb-6">Extract from Instagram, scrape a website, upload a PDF, photo, or bulk-import a folder of images.</p>
 
       <div className="flex gap-1 mb-6 bg-[#161B22] rounded p-1 border border-gray-800">
         {TABS.map(t => (
@@ -366,6 +529,7 @@ export default function AddRecipePage() {
       {tab === 'url'   && <UrlTab />}
       {tab === 'pdf'   && <PdfTab />}
       {tab === 'image' && <PhotoTab />}
+      {tab === 'bulk'  && <BulkPhotoTab />}
       {tab === 'text'  && <TextTab />}
     </div>
   )
