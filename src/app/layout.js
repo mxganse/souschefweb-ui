@@ -16,11 +16,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#0E1117] text-[#E0E0E0]">
-        <nav className="border-b border-gray-800 px-4 py-3 flex gap-4 items-center sticky top-0 bg-[#0E1117] z-10">
-          <a href="/" className="text-[#D35400] font-black text-lg tracking-tight hover:text-[#E67E22] transition-colors">SOUSCHEF</a>
-          <a href="/" className="text-sm text-gray-400 hover:text-white transition-colors py-1">Add Recipe</a>
-          <a href="/recipes" className="text-sm text-gray-400 hover:text-white transition-colors py-1">Archive</a>
-          <a href="/admin" className="ml-auto text-sm text-gray-600 hover:text-gray-400 transition-colors py-1">Admin</a>
+        <nav className="border-b border-gray-800 px-4 py-3 flex items-center sticky top-0 bg-[#0E1117] z-10 gap-6">
+          <a href="/" className="text-[#D35400] font-black text-lg tracking-tight hover:text-[#E67E22] transition-colors flex-shrink-0">
+            SOUSCHEF
+          </a>
+          {/* Future module links */}
+          <a href="/admin" className="ml-auto text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
+            Admin
+          </a>
         </nav>
         <main className="max-w-5xl mx-auto px-4 py-6 pb-safe">
           {children}

@@ -21,6 +21,35 @@ const SOURCE_LABEL = {
   'Text Import':          'Text',
 }
 
+// ── Status indicator ──────────────────────────────────────────────────────────
+const STATUS_CONF = {
+  connected:        { dot: 'bg-green-500',  ring: 'ring-green-900', label: 'Connected',        text: 'text-green-400'  },
+  online:           { dot: 'bg-green-500',  ring: 'ring-green-900', label: 'Online',            text: 'text-green-400'  },
+  configured:       { dot: 'bg-blue-500',   ring: 'ring-blue-900',  label: 'Key set',           text: 'text-blue-400'   },
+  production:       { dot: 'bg-green-500',  ring: 'ring-green-900', label: 'Production',        text: 'text-green-400'  },
+  preview:          { dot: 'bg-yellow-500', ring: 'ring-yellow-900',label: 'Preview',           text: 'text-yellow-400' },
+  development:      { dot: 'bg-gray-500',   ring: 'ring-gray-800',  label: 'Local Dev',         text: 'text-gray-400'   },
+  error:            { dot: 'bg-red-500',    ring: 'ring-red-900',   label: 'Error',             text: 'text-red-400'    },
+  offline:          { dot: 'bg-red-500',    ring: 'ring-red-900',   label: 'Offline',           text: 'text-red-400'    },
+  'not-configured': { dot: 'bg-gray-700',   ring: 'ring-gray-800',  label: 'Not configured',    text: 'text-gray-600'   },
+  'missing-key':    { dot: 'bg-yellow-600', ring: 'ring-yellow-900',label: 'Key missing',       text: 'text-yellow-500' },
+}
+
+function StatusRow({ service, status, detail, meta }) {
+  const s = STATUS_CONF[status] || STATUS_CONF['not-configured']
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-gray-800 last:border-b-0">
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ring-2 ${s.dot} ${s.ring}`} />
+      <span className="w-32 text-sm text-gray-300 flex-shrink-0 font-semibold">{service}</span>
+      <span className={`w-28 text-xs font-bold flex-shrink-0 ${s.text}`}>{s.label}</span>
+      <div className="flex-1 min-w-0 flex items-center gap-3">
+        {detail && <p className="text-xs text-gray-500 font-mono truncate">{detail}</p>}
+        {meta && <p className="text-xs text-gray-700 flex-shrink-0">{meta}</p>}
+      </div>
+    </div>
+  )
+}
+
 function StatCard({ label, value, sub }) {
   return (
     <div className="bg-[#161B22] border border-gray-800 rounded-lg p-5">
@@ -34,7 +63,12 @@ function StatCard({ label, value, sub }) {
 export default async function AdminPage() {
   const supabase = createServerClient()
 
-  const [recipesRes, ingredientCountRes] = await Promise.all([
+  // ── Parallel: DB queries + worker health ping ─────────────────────────────
+  const workerBaseUrl = process.env.WORKER_URL
+  const workerPingUrl = workerBaseUrl ? `${workerBaseUrl.replace(/\/$/, '')}/health` : null
+
+  const t0 = Date.now()
+  const [recipesRes, ingredientCountRes, workerPingRes] = await Promise.allSettled([
     supabase
       .from('recipes')
       .select('id, title, source_type, created_at')
@@ -42,26 +76,66 @@ export default async function AdminPage() {
     supabase
       .from('ingredients')
       .select('*', { count: 'exact', head: true }),
+    workerPingUrl
+      ? fetch(workerPingUrl, { signal: AbortSignal.timeout(4000), cache: 'no-store' })
+      : Promise.resolve(null),
   ])
+  const dbLatency = Date.now() - t0
 
-  const recipes = recipesRes.data ?? []
-  const ingredientCount = ingredientCountRes.count ?? 0
+  const recipes       = recipesRes.status === 'fulfilled' ? (recipesRes.value.data ?? []) : []
+  const ingredientCount = ingredientCountRes.status === 'fulfilled' ? (ingredientCountRes.value.count ?? 0) : 0
+
+  // ── Connectivity status ───────────────────────────────────────────────────
+  // Supabase
+  const supabaseOk     = recipesRes.status === 'fulfilled' && !recipesRes.value.error
+  const supabaseStatus = supabaseOk ? 'connected' : 'error'
+  const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseHost   = supabaseUrl ? (() => { try { return new URL(supabaseUrl).hostname } catch { return supabaseUrl } })() : null
+
+  // OpenAI
+  const openaiKey    = process.env.OPENAI_API_KEY
+  const openaiStatus = openaiKey ? 'configured' : 'missing-key'
+  const openaiMasked = openaiKey ? `${openaiKey.slice(0, 10)}…${openaiKey.slice(-4)}` : 'OPENAI_API_KEY not set'
+
+  // Worker
+  const workerStatus =
+    !workerBaseUrl       ? 'not-configured'
+    : workerPingRes.status === 'rejected' ? 'offline'
+    : workerPingRes.value === null        ? 'not-configured'
+    : workerPingRes.value.ok              ? 'online'
+    :                                       'error'
+  const workerDisplay = workerBaseUrl
+    ? (() => { try { return new URL(workerBaseUrl).hostname } catch { return workerBaseUrl } })()
+    : 'WORKER_URL not set'
+  const workerSecret  = process.env.WORKER_SECRET ? '🔑 secret set' : '⚠ no secret'
+
+  // Vercel / deployment
+  const vercelEnv    = process.env.VERCEL_ENV    // 'production' | 'preview' | 'development' | undefined
+  const vercelRegion = process.env.VERCEL_REGION  // e.g. 'iad1'
+  const vercelCommit = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7)
+  const vercelUrl    = process.env.VERCEL_URL
+  const deployStatus = vercelEnv === 'production' ? 'production'
+    : vercelEnv === 'preview'    ? 'preview'
+    : vercelEnv === 'development' ? 'development'
+    : 'development'
+  const deployDetail  = vercelUrl ?? 'localhost'
+  const deployMeta    = [vercelRegion, vercelCommit].filter(Boolean).join(' · ')
+
   const total = recipes.length
 
-  // ── Source breakdown ────────────────────────────────────────────────────────
+  // ── Source breakdown ──────────────────────────────────────────────────────
   const sourceMap = {}
   for (const r of recipes) {
     const key = r.source_type || 'Unknown'
     sourceMap[key] = (sourceMap[key] || 0) + 1
   }
-  // Merge legacy Instagram label
   if (sourceMap['Instagram Extraction']) {
     sourceMap['Instagram Extract'] = (sourceMap['Instagram Extract'] || 0) + sourceMap['Instagram Extraction']
     delete sourceMap['Instagram Extraction']
   }
   const sources = Object.entries(sourceMap).sort((a, b) => b[1] - a[1])
 
-  // ── Daily activity — last 30 days ───────────────────────────────────────────
+  // ── Daily activity — last 30 days ─────────────────────────────────────────
   const today = new Date()
   const days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(today)
@@ -75,10 +149,9 @@ export default async function AdminPage() {
   }
   const maxDay = Math.max(...days.map(d => d.count), 1)
 
-  // ── Stats ───────────────────────────────────────────────────────────────────
+  // ── Stats ─────────────────────────────────────────────────────────────────
   const thisMonth = new Date()
-  thisMonth.setDate(1)
-  thisMonth.setHours(0, 0, 0, 0)
+  thisMonth.setDate(1); thisMonth.setHours(0, 0, 0, 0)
   const thisMonthCount = recipes.filter(r => new Date(r.created_at) >= thisMonth).length
 
   const lastWeek = new Date()
@@ -93,38 +166,73 @@ export default async function AdminPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight mb-1">ADMIN</h1>
-        <p className="text-gray-500 text-sm">Recipe database and processing statistics.</p>
+        <p className="text-gray-500 text-sm">System status and recipe database statistics.</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total Recipes" value={total} />
-        <StatCard label="Ingredients" value={ingredientCount} />
-        <StatCard label="This Month" value={thisMonthCount} />
-        <StatCard label="Last 7 Days" value={lastWeekCount} />
-      </div>
-
-      {/* Source breakdown */}
+      {/* ── System Status ──────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">By Source</h2>
-        <div className="space-y-3">
-          {sources.map(([source, count]) => (
-            <div key={source} className="flex items-center gap-3">
-              <span className="w-6 text-base flex-shrink-0">{SOURCE_ICON[source] || '📋'}</span>
-              <span className="w-24 text-sm text-gray-300 flex-shrink-0">{SOURCE_LABEL[source] || source}</span>
-              <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-[#D35400] h-2 rounded-full transition-all"
-                  style={{ width: `${((count / total) * 100).toFixed(1)}%` }}
-                />
-              </div>
-              <span className="w-20 text-right text-sm text-gray-400 flex-shrink-0 tabular-nums">
-                {count.toLocaleString()} <span className="text-gray-600">({((count / total) * 100).toFixed(0)}%)</span>
-              </span>
-            </div>
-          ))}
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">System Status</h2>
+        <div className="bg-[#161B22] border border-gray-800 rounded-lg px-4 divide-y divide-gray-800">
+          <StatusRow
+            service="Database"
+            status={supabaseStatus}
+            detail={supabaseHost ?? 'NEXT_PUBLIC_SUPABASE_URL not set'}
+            meta={supabaseOk ? `${dbLatency}ms` : recipesRes.value?.error?.message}
+          />
+          <StatusRow
+            service="OpenAI"
+            status={openaiStatus}
+            detail={openaiMasked}
+          />
+          <StatusRow
+            service="Video Worker"
+            status={workerStatus}
+            detail={workerDisplay}
+            meta={workerBaseUrl ? workerSecret : null}
+          />
+          <StatusRow
+            service="Deployment"
+            status={deployStatus}
+            detail={deployDetail}
+            meta={deployMeta || null}
+          />
         </div>
       </section>
+
+      {/* Summary cards */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Recipe Database</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard label="Total Recipes"  value={total} />
+          <StatCard label="Ingredients"    value={ingredientCount} />
+          <StatCard label="This Month"     value={thisMonthCount} />
+          <StatCard label="Last 7 Days"    value={lastWeekCount} />
+        </div>
+      </section>
+
+      {/* Source breakdown */}
+      {sources.length > 0 && (
+        <section>
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">By Source</h2>
+          <div className="space-y-3">
+            {sources.map(([source, count]) => (
+              <div key={source} className="flex items-center gap-3">
+                <span className="w-6 text-base flex-shrink-0">{SOURCE_ICON[source] || '📋'}</span>
+                <span className="w-24 text-sm text-gray-300 flex-shrink-0">{SOURCE_LABEL[source] || source}</span>
+                <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-[#D35400] h-2 rounded-full transition-all"
+                    style={{ width: `${((count / total) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+                <span className="w-20 text-right text-sm text-gray-400 flex-shrink-0 tabular-nums">
+                  {count.toLocaleString()} <span className="text-gray-600">({((count / total) * 100).toFixed(0)}%)</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Daily bar chart */}
       <section>
@@ -152,27 +260,27 @@ export default async function AdminPage() {
       </section>
 
       {/* Recent imports */}
-      <section>
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Recent Imports</h2>
-        <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
-          {recent.map((r, i) => (
-            <div key={r.id} className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors">
-              <span className="text-base flex-shrink-0">
-                {SOURCE_ICON[r.source_type] || '📋'}
-              </span>
-              <span className="flex-1 text-sm text-gray-300 truncate">{r.title}</span>
-              <span className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
-                {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-            </div>
-          ))}
-        </div>
-        {total > 15 && (
-          <p className="text-xs text-gray-600 mt-2 text-center">
-            Showing 15 of {total.toLocaleString()} — <a href="/recipes" className="text-[#D35400] hover:text-[#E67E22] underline">view all in Archive</a>
-          </p>
-        )}
-      </section>
+      {recent.length > 0 && (
+        <section>
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Recent Imports</h2>
+          <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
+            {recent.map(r => (
+              <div key={r.id} className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors">
+                <span className="text-base flex-shrink-0">{SOURCE_ICON[r.source_type] || '📋'}</span>
+                <span className="flex-1 text-sm text-gray-300 truncate">{r.title}</span>
+                <span className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
+                  {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            ))}
+          </div>
+          {total > 15 && (
+            <p className="text-xs text-gray-600 mt-2 text-center">
+              Showing 15 of {total.toLocaleString()} — <a href="/" className="text-[#D35400] hover:text-[#E67E22] underline">view all in Archive</a>
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Storage note */}
       <section className="border border-gray-800 rounded-lg px-4 py-3 bg-[#161B22]">

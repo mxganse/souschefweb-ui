@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 const ITEMS_PER_PAGE = 20
@@ -34,6 +34,7 @@ function SourceIcon({ type }) {
 }
 
 function RecipeCard({ recipe, onDelete, onUpdate }) {
+  const detailsRef              = useRef()
   const [title, setTitle]       = useState(recipe.title || '')
   const [category, setCategory] = useState(recipe.category || '')
   const [text, setText]         = useState(recipe.instructions_markdown || '')
@@ -53,6 +54,13 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
     setTimeout(() => setSaved(false), 2000)
   }
 
+  function handleCancel() {
+    setTitle(recipe.title || '')
+    setCategory(recipe.category || '')
+    setText(recipe.instructions_markdown || '')
+    if (detailsRef.current) detailsRef.current.open = false
+  }
+
   async function handleDelete() {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
     setDeleting(true)
@@ -67,7 +75,7 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
   }
 
   return (
-    <details className="bg-[#161B22] border border-gray-800 rounded group">
+    <details ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group">
       <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
         <SourceIcon type={recipe.source_type} />
         <div className="flex-1 min-w-0">
@@ -125,27 +133,37 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
           />
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={saveEdits}
-            disabled={saving}
-            className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white text-sm font-bold py-3 rounded transition-colors"
-          >
-            {saving ? 'Saving...' : saved ? 'Saved ✓' : 'SAVE EDITS'}
-          </button>
-          <button
-            onClick={downloadPdf}
-            className="flex-1 bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] text-white text-sm font-bold py-3 rounded transition-colors"
-          >
-            DOWNLOAD PDF
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="px-4 py-3 bg-transparent border border-red-900 hover:bg-red-950 hover:border-red-700 active:bg-red-900 disabled:opacity-40 text-red-500 hover:text-red-400 text-sm font-bold rounded transition-colors"
-          >
-            {deleting ? '…' : 'DELETE'}
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={saveEdits}
+              disabled={saving}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded transition-colors"
+            >
+              {saving ? 'Saving...' : saved ? 'Saved ✓' : 'SAVE EDITS'}
+            </button>
+            <button
+              onClick={downloadPdf}
+              className="flex-1 bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] text-white text-sm font-bold py-2.5 rounded transition-colors"
+            >
+              DOWNLOAD PDF
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="flex-1 bg-transparent border border-gray-700 hover:border-gray-500 hover:text-white text-gray-400 text-sm font-bold py-2.5 rounded transition-colors"
+            >
+              CANCEL
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 bg-transparent border border-red-900 hover:bg-red-950 hover:border-red-700 disabled:opacity-40 text-red-500 hover:text-red-400 text-sm font-bold py-2.5 rounded transition-colors"
+            >
+              {deleting ? 'Deleting…' : 'DELETE'}
+            </button>
+          </div>
         </div>
       </div>
     </details>
