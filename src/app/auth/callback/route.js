@@ -16,9 +16,10 @@ export async function GET(request) {
     const redirectBase = forwardedHost ? `https://${forwardedHost}` : origin
     const response = NextResponse.redirect(`${redirectBase}${next}`)
 
+    const clean = s => (s || '').replace(/^﻿/, '').trim()
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
       {
         cookies: {
           getAll() {
