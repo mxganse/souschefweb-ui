@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 
 const ITEMS_PER_PAGE = 20
@@ -33,20 +33,32 @@ function SourceIcon({ type }) {
   return <span className="text-base" title={meta.label}>{meta.icon}</span>
 }
 
-function RecipeCard({ recipe }) {
-  const [text, setText] = useState(recipe.instructions_markdown || '')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+function RecipeCard({ recipe, onDelete, onUpdate }) {
+  const [title, setTitle]       = useState(recipe.title || '')
+  const [category, setCategory] = useState(recipe.category || '')
+  const [text, setText]         = useState(recipe.instructions_markdown || '')
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function saveEdits() {
     setSaving(true)
     await supabase
       .from('recipes')
-      .update({ instructions_markdown: text })
+      .update({ title, category: category || null, instructions_markdown: text })
       .eq('id', recipe.id)
     setSaving(false)
     setSaved(true)
+    onUpdate(recipe.id, { title, category: category || null, instructions_markdown: text })
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
+    setDeleting(true)
+    await supabase.from('ingredients').delete().eq('recipe_id', recipe.id)
+    await supabase.from('recipes').delete().eq('id', recipe.id)
+    onDelete(recipe.id)
   }
 
   function downloadPdf() {
@@ -59,35 +71,61 @@ function RecipeCard({ recipe }) {
       <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
         <SourceIcon type={recipe.source_type} />
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm leading-snug">{recipe.title}</p>
+          <p className="font-bold text-sm leading-snug">{title || recipe.title}</p>
           <p className="text-xs text-gray-500 mt-0.5">
             {formatDate(recipe.created_at)}
-            {recipe.category && recipe.category !== 'Unknown' ? ` · @${recipe.category}` : ''}
+            {category && category !== 'Unknown' ? ` · @${category}` : ''}
           </p>
         </div>
         <span className="text-gray-600 text-xs mt-0.5 group-open:rotate-90 transition-transform">▶</span>
       </summary>
 
       <div className="px-4 pb-4 space-y-3 border-t border-gray-800 pt-3">
+        {/* Editable metadata fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Creator / Handle</label>
+            <input
+              type="text"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              placeholder="@username or source name"
+              className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors"
+            />
+          </div>
+        </div>
+
         {recipe.source_url && (
           <a
             href={recipe.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block text-xs text-[#D35400] hover:text-[#E67E22] underline py-1"
+            className="inline-block text-xs text-[#D35400] hover:text-[#E67E22] underline py-0.5"
           >
             View original source →
           </a>
         )}
 
-        <textarea
-          value={text}
-          onChange={e => setText(e.target.value)}
-          rows={12}
-          className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-base sm:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-none"
-        />
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Recipe Markdown</label>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            rows={12}
+            className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-base sm:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-none"
+          />
+        </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={saveEdits}
             disabled={saving}
@@ -100,6 +138,13 @@ function RecipeCard({ recipe }) {
             className="flex-1 bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] text-white text-sm font-bold py-3 rounded transition-colors"
           >
             DOWNLOAD PDF
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="px-4 py-3 bg-transparent border border-red-900 hover:bg-red-950 hover:border-red-700 active:bg-red-900 disabled:opacity-40 text-red-500 hover:text-red-400 text-sm font-bold rounded transition-colors"
+          >
+            {deleting ? '…' : 'DELETE'}
           </button>
         </div>
       </div>
@@ -157,16 +202,28 @@ function Pagination({ page, pageCount, onPage }) {
 }
 
 export default function RecipeArchive({ initialRecipes }) {
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('newest')
+  const [recipes, setRecipes]         = useState(initialRecipes)
+  const [search, setSearch]           = useState('')
+  const [sort, setSort]               = useState('newest')
   const [sourceFilter, setSourceFilter] = useState('all')
-  const [page, setPage] = useState(1)
+  const [page, setPage]               = useState(1)
 
-  function handleSearch(v) { setSearch(v); setPage(1) }
-  function handleSource(v) { setSourceFilter(v); setPage(1) }
-  function handleSort(v) { setSort(v); setPage(1) }
+  // Sync when server re-fetches (e.g. after router.refresh())
+  useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
 
-  const filtered = initialRecipes
+  function handleSearch(v)  { setSearch(v);       setPage(1) }
+  function handleSource(v)  { setSourceFilter(v); setPage(1) }
+  function handleSort(v)    { setSort(v);          setPage(1) }
+
+  function handleDelete(id) {
+    setRecipes(prev => prev.filter(r => r.id !== id))
+  }
+
+  function handleUpdate(id, patches) {
+    setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...patches } : r))
+  }
+
+  const filtered = recipes
     .filter(r => {
       if (sourceFilter === 'Instagram Extract') {
         if (!['Instagram Extract', 'Instagram Extraction'].includes(r.source_type)) return false
@@ -192,8 +249,8 @@ export default function RecipeArchive({ initialRecipes }) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1">
-        <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight">RECIPE ARCHIVE</h1>
-        <span className="text-xs text-gray-500">{initialRecipes.length} recipes</span>
+        <h2 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight">RECIPE ARCHIVE</h2>
+        <span className="text-xs text-gray-500">{recipes.length} recipes</span>
       </div>
 
       {/* Search + Sort */}
@@ -246,11 +303,18 @@ export default function RecipeArchive({ initialRecipes }) {
 
       {paginated.length === 0 ? (
         <p className="text-gray-500 text-sm text-center py-12">
-          {search || sourceFilter !== 'all' ? 'No recipes match your filters.' : 'No recipes yet. Add your first one!'}
+          {search || sourceFilter !== 'all' ? 'No recipes match your filters.' : 'No recipes yet. Add your first one above!'}
         </p>
       ) : (
         <div className="space-y-2">
-          {paginated.map(r => <RecipeCard key={r.id} recipe={r} />)}
+          {paginated.map(r => (
+            <RecipeCard
+              key={r.id}
+              recipe={r}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
+          ))}
         </div>
       )}
 
