@@ -1,10 +1,10 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createSessionClient } from '@/lib/supabase/server'
 import RecipeArchive from './RecipeArchive'
 
 export const dynamic = 'force-dynamic'
 
 export default async function RecipesPage() {
-  const supabase = createServerClient()
+  const supabase = await createSessionClient()
 
   const { data: recipes, error } = await supabase
     .from('recipes')

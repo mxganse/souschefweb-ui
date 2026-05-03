@@ -1,4 +1,6 @@
 import './globals.css'
+import { createSessionClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const metadata = {
   title: 'SousChef',
@@ -12,7 +14,17 @@ export const viewport = {
   maximumScale: 1,
 }
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const supabase = await createSessionClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  async function signOut() {
+    'use server'
+    const supabase = await createSessionClient()
+    await supabase.auth.signOut()
+    redirect('/login')
+  }
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#0E1117] text-[#E0E0E0]">
@@ -20,11 +32,30 @@ export default function RootLayout({ children }) {
           <a href="/" className="text-[#D35400] font-black text-lg tracking-tight hover:text-[#E67E22] transition-colors flex-shrink-0">
             SOUSCHEF
           </a>
-          {/* Future module links */}
-          <a href="/admin" className="ml-auto text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
-            Admin
-          </a>
+
+          {user ? (
+            <>
+              <a href="/admin" className="text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
+                Admin
+              </a>
+              <div className="ml-auto flex items-center gap-4">
+                <span className="text-xs text-gray-700 hidden sm:block">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
+                <form action={signOut}>
+                  <button type="submit" className="text-xs font-bold text-gray-600 hover:text-red-400 transition-colors tracking-widest uppercase py-1">
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <a href="/login" className="ml-auto text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
+              Sign in
+            </a>
+          )}
         </nav>
+
         <main className="max-w-5xl mx-auto px-4 py-6 pb-safe">
           {children}
         </main>

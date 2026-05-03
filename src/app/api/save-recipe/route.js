@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createSessionClient } from '@/lib/supabase/server'
 
 function parseMarkdown(markdown) {
   const titleMatch = markdown.match(/^#\s+(.+)$/m)
@@ -30,7 +30,10 @@ export async function POST(request) {
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
     const { title, ingredients } = parseMarkdown(markdown)
-    const supabase = createServerClient()
+    const supabase = await createSessionClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     // ── Duplicate check 1: title (case-insensitive exact) ──────────────────
     const { data: titleMatch } = await supabase
@@ -76,6 +79,7 @@ export async function POST(request) {
         source_type: sourceType,
         source_url: sourceUrl,
         instructions_markdown: markdown,
+        user_id: user.id,
       })
       .select('id')
       .single()

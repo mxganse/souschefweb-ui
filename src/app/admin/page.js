@@ -1,4 +1,5 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { SOURCE_META } from '@/lib/sourceMeta'
 
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,11 @@ function StatCard({ label, value, sub }) {
 }
 
 export default async function AdminPage() {
-  const supabase = createServerClient()
+  const sessionSupabase = await createSessionClient()
+  const { data: { user } } = await sessionSupabase.auth.getUser()
+  if (user?.email !== 'mxganse@gmail.com') redirect('/')
+
+  const supabase = createAdminClient()
 
   // ── Parallel: DB queries + worker health ping ─────────────────────────────
   const workerBaseUrl = process.env.WORKER_URL
