@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 function stripMarkdown(text) {
   return (text || '')
@@ -76,7 +76,7 @@ export async function GET(request) {
 
   if (!id) return new Response('Missing id', { status: 400 })
 
-  const supabase = createServerClient()
+  const supabase = createAdminClient()
   const { data: recipe, error } = await supabase
     .from('recipes')
     .select('title, category, source_url, instructions_markdown, created_at')
