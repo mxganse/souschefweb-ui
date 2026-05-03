@@ -1,17 +1,9 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { SOURCE_META } from '@/lib/sourceMeta'
 
 const ITEMS_PER_PAGE = 20
-
-const SOURCE_META = {
-  'Instagram Extract':   { icon: '📸', label: 'Instagram' },
-  'Instagram Extraction':{ icon: '📸', label: 'Instagram' }, // legacy label
-  'Web Import':          { icon: '🌐', label: 'Web' },
-  'PDF Import':          { icon: '📄', label: 'PDF' },
-  'Image Import':        { icon: '📷', label: 'Photo' },
-  'Text Import':         { icon: '📝', label: 'Text' },
-}
 
 const SOURCE_FILTERS = [
   { id: 'all',                 label: 'All' },

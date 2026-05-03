@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const TABS = [
@@ -11,14 +11,6 @@ const TABS = [
   { id: 'text',  label: 'Text'      },
 ]
 
-const REEL_STATUS = {
-  downloading:  'Downloading reel…',
-  extracting:   'Extracting frames & audio…',
-  transcribing: 'Transcribing audio…',
-  analyzing:    'Analyzing with GPT-4o…',
-}
-
-// ── Shared: save a draft to the DB ────────────────────────────────────────────
 async function saveDraft(draft) {
   const res = await fetch('/api/save-recipe', {
     method: 'POST',
@@ -31,12 +23,11 @@ async function saveDraft(draft) {
   return { result: data }
 }
 
-// ── Preview / edit panel (shown after extraction) ─────────────────────────────
 function PreviewEditor({ draft, onSave, onDiscard }) {
-  const [markdown, setMarkdown] = useState(draft.markdown)
-  const [saving, setSaving]     = useState(false)
+  const [markdown, setMarkdown]   = useState(draft.markdown)
+  const [saving, setSaving]       = useState(false)
   const [duplicate, setDuplicate] = useState(null)
-  const [error, setError]       = useState(null)
+  const [error, setError]         = useState(null)
 
   async function handleSave() {
     setSaving(true); setDuplicate(null); setError(null)
@@ -51,37 +42,23 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Review &amp; Edit</p>
-        <button onClick={onDiscard} className="text-xs text-gray-500 hover:text-white underline">
-          ✕ Discard
-        </button>
+        <button onClick={onDiscard} className="text-xs text-gray-500 hover:text-white underline">✕ Discard</button>
       </div>
-
       <textarea
-        value={markdown}
-        onChange={e => setMarkdown(e.target.value)}
-        rows={20}
+        value={markdown} onChange={e => setMarkdown(e.target.value)} rows={20}
         className="w-full bg-[#161B22] border border-gray-700 rounded px-3 py-2 text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-y"
       />
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm"
-      >
+      <button onClick={handleSave} disabled={saving}
+        className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
         {saving ? 'Saving…' : 'SAVE TO ARCHIVE'}
       </button>
-
       {duplicate && (
         <div className="p-4 bg-yellow-950 border border-yellow-700 rounded text-sm text-yellow-300 space-y-1">
           <p>⚠️ {duplicate.error}</p>
-          <a href="#archive" className="inline-block text-[#D35400] hover:text-[#E67E22] underline">
-            View in Archive ↓
-          </a>
+          <a href="#archive" className="inline-block text-[#D35400] hover:text-[#E67E22] underline">View in Archive ↓</a>
         </div>
       )}
-      {error && (
-        <div className="p-4 bg-red-950 border border-red-700 rounded text-sm text-red-300">{error}</div>
-      )}
+      {error && <div className="p-4 bg-red-950 border border-red-700 rounded text-sm text-red-300">{error}</div>}
     </div>
   )
 }
@@ -91,29 +68,24 @@ function SavedBox({ result, onReset, resetLabel }) {
     <div className="p-4 bg-[#161B22] border border-gray-700 rounded space-y-2">
       <p className="text-[#D35400] font-bold text-lg">{result.title}</p>
       <p className="text-xs text-gray-500">{result.ingredientCount ?? 0} ingredients · saved to archive</p>
-      <a href="#archive" className="inline-block mt-1 text-sm text-[#D35400] hover:text-[#E67E22] underline">
-        View in Archive ↓
-      </a>
-      <button onClick={onReset} className="block text-sm text-gray-400 hover:text-white underline pt-1">
-        {resetLabel}
-      </button>
+      <a href="#archive" className="inline-block mt-1 text-sm text-[#D35400] hover:text-[#E67E22] underline">View in Archive ↓</a>
+      <button onClick={onReset} className="block text-sm text-gray-400 hover:text-white underline pt-1">{resetLabel}</button>
     </div>
   )
 }
 
 // ── Instagram Reel ────────────────────────────────────────────────────────────
 function ReelTab({ onSaved }) {
-  const [url, setUrl]                       = useState('')
+  const [url, setUrl]                           = useState('')
   const [manualIngredients, setManualIngredients] = useState('')
-  const [phase, setPhase]                   = useState('form')
-  const [reeStatus, setReelStatus]          = useState('downloading')
-  const [draft, setDraft]                   = useState(null)
-  const [result, setResult]                 = useState(null)
-  const [error, setError]                   = useState(null)
+  const [phase, setPhase]                       = useState('form')
+  const [draft, setDraft]                       = useState(null)
+  const [result, setResult]                     = useState(null)
+  const [error, setError]                       = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError(null); setPhase('extracting'); setReelStatus('downloading')
+    setError(null); setPhase('extracting')
     try {
       const res = await fetch('/api/process-reel', {
         method: 'POST',
@@ -122,17 +94,18 @@ function ReelTab({ onSaved }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
-      setDraft(data)
-      setPhase('preview')
+      setDraft(data); setPhase('preview')
     } catch (err) { setError(err.message); setPhase('form') }
   }
 
-  function reset() { setPhase('form'); setUrl(''); setManualIngredients(''); setDraft(null); setResult(null); setError(null) }
+  function reset() {
+    setPhase('form'); setUrl(''); setManualIngredients('')
+    setDraft(null); setResult(null); setError(null)
+  }
 
   if (phase === 'done') return <SavedBox result={result} onReset={reset} resetLabel="Extract another" />
-
   if (phase === 'preview') return (
-    <PreviewEditor draft={draft} onDiscard={reset} onSave={r => { setResult(r); setPhase('done'); onSaved?.() }} />
+    <PreviewEditor draft={draft} onDiscard={reset} onSave={r => { setResult(r); setPhase('done'); onSaved() }} />
   )
 
   return (
@@ -152,12 +125,12 @@ function ReelTab({ onSaved }) {
       />
       <button type="submit" disabled={phase === 'extracting' || !url.trim()}
         className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
-        {phase === 'extracting' ? (REEL_STATUS[reeStatus] || 'Processing…') : 'EXTRACT RECIPE'}
+        {phase === 'extracting' ? 'Processing…' : 'EXTRACT RECIPE'}
       </button>
       {phase === 'extracting' && (
         <div className="flex items-center gap-3 text-sm text-gray-400">
           <span className="inline-block w-4 h-4 border-2 border-[#D35400] border-t-transparent rounded-full animate-spin" />
-          {REEL_STATUS[reeStatus]}
+          Processing…
         </div>
       )}
       {error && <div className="p-4 bg-red-950 border border-red-800 rounded text-red-300 text-sm"><strong>Error:</strong> {error}</div>}
@@ -184,9 +157,8 @@ function ImportTab({ extractFn, hint, formContent, onSaved }) {
   function reset() { setPhase('form'); setDraft(null); setResult(null); setError(null) }
 
   if (phase === 'done') return <SavedBox result={result} onReset={reset} resetLabel="Import another" />
-
   if (phase === 'preview') return (
-    <PreviewEditor draft={draft} onDiscard={reset} onSave={r => { setResult(r); setPhase('done'); onSaved?.() }} />
+    <PreviewEditor draft={draft} onDiscard={reset} onSave={r => { setResult(r); setPhase('done'); onSaved() }} />
   )
 
   return (
@@ -238,19 +210,19 @@ function UrlTab({ onSaved }) {
   )
 }
 
-// ── PDF ───────────────────────────────────────────────────────────────────────
-function PdfTab({ onSaved }) {
+// ── File upload (PDF or Photo) ────────────────────────────────────────────────
+function FileImportTab({ hint, accept, fileType, icon, onSaved }) {
   const [file, setFile] = useState(null)
   const inputRef = useRef()
 
   return (
     <ImportTab
-      hint="Upload a PDF recipe card, cookbook page scan, or any PDF containing a recipe."
+      hint={hint}
       onSaved={onSaved}
       extractFn={async () => {
         const form = new FormData()
         form.append('file', file)
-        form.append('type', 'pdf')
+        form.append('type', fileType)
         const res = await fetch('/api/import-recipe', { method: 'POST', body: form })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Import failed')
@@ -261,47 +233,9 @@ function PdfTab({ onSaved }) {
       formContent={({ disabled }) => (
         <>
           <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg py-10 px-4 cursor-pointer hover:border-[#D35400] transition-colors bg-[#161B22]">
-            <span className="text-3xl mb-2">📄</span>
+            <span className="text-3xl mb-2">{icon}</span>
             <span className="text-sm text-gray-400">{file ? file.name : 'Tap to choose file'}</span>
-            <input ref={inputRef} type="file" accept=".pdf,application/pdf" className="hidden"
-              onChange={e => setFile(e.target.files[0] || null)} />
-          </label>
-          <button type="submit" disabled={disabled || !file}
-            className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm">
-            {disabled ? 'Importing…' : 'IMPORT RECIPE'}
-          </button>
-        </>
-      )}
-    />
-  )
-}
-
-// ── Photo / Handwritten ───────────────────────────────────────────────────────
-function PhotoTab({ onSaved }) {
-  const [file, setFile] = useState(null)
-  const inputRef = useRef()
-
-  return (
-    <ImportTab
-      hint="Take a photo of a handwritten recipe card, a cookbook page, or a printed recipe. GPT-4o Vision will read it."
-      onSaved={onSaved}
-      extractFn={async () => {
-        const form = new FormData()
-        form.append('file', file)
-        form.append('type', 'image')
-        const res = await fetch('/api/import-recipe', { method: 'POST', body: form })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Import failed')
-        setFile(null)
-        if (inputRef.current) inputRef.current.value = ''
-        return data
-      }}
-      formContent={({ disabled }) => (
-        <>
-          <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-700 rounded-lg py-10 px-4 cursor-pointer hover:border-[#D35400] transition-colors bg-[#161B22]">
-            <span className="text-3xl mb-2">📷</span>
-            <span className="text-sm text-gray-400">{file ? file.name : 'Tap to choose file'}</span>
-            <input ref={inputRef} type="file" accept="image/*" className="hidden"
+            <input ref={inputRef} type="file" accept={accept} className="hidden"
               onChange={e => setFile(e.target.files[0] || null)} />
           </label>
           <button type="submit" disabled={disabled || !file}
@@ -316,26 +250,24 @@ function PhotoTab({ onSaved }) {
 
 // ── Bulk Photos ───────────────────────────────────────────────────────────────
 const ITEM_STATUS = {
-  pending:    { icon: '·', cls: 'text-gray-500'   },
-  extracting: { icon: '◌', cls: 'text-blue-400 animate-pulse' },
-  saving:     { icon: '◌', cls: 'text-blue-400 animate-pulse' },
-  done:       { icon: '✓', cls: 'text-green-400'  },
-  duplicate:  { icon: '⚠', cls: 'text-yellow-400' },
-  error:      { icon: '✗', cls: 'text-red-400'    },
+  pending:    { icon: '·', cls: 'text-gray-500'              },
+  extracting: { icon: '◌', cls: 'text-blue-400 animate-pulse'},
+  saving:     { icon: '◌', cls: 'text-blue-400 animate-pulse'},
+  done:       { icon: '✓', cls: 'text-green-400'             },
+  duplicate:  { icon: '⚠', cls: 'text-yellow-400'            },
+  error:      { icon: '✗', cls: 'text-red-400'               },
 }
 
 function BulkItemRow({ item, running, onRemove }) {
   const [imgUrl, setImgUrl] = useState(null)
   const s = ITEM_STATUS[item.status] || ITEM_STATUS.pending
 
-  // Create blob URL when item enters error state; revoke on cleanup
-  useState(() => {
-    if (item.status === 'error' && item.file && !imgUrl) {
-      const url = URL.createObjectURL(item.file)
-      setImgUrl(url)
-      return () => URL.revokeObjectURL(url)
-    }
-  })
+  useEffect(() => {
+    if (item.status !== 'error' || !item.file) return
+    const url = URL.createObjectURL(item.file)
+    setImgUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [item.status, item.file])
 
   return (
     <div className="bg-[#161B22] border-b border-gray-800 last:border-b-0">
@@ -369,8 +301,8 @@ function BulkItemRow({ item, running, onRemove }) {
 }
 
 function BulkPhotoTab({ onSaved }) {
-  const [items, setItems]     = useState([])
-  const [running, setRunning] = useState(false)
+  const [items, setItems]       = useState([])
+  const [running, setRunning]   = useState(false)
   const [finished, setFinished] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef()
@@ -388,8 +320,7 @@ function BulkPhotoTab({ onSaved }) {
 
   async function processAll() {
     setRunning(true); setFinished(false)
-    const pending = items.filter(it => it.status === 'pending')
-    for (const item of pending) {
+    for (const item of items.filter(it => it.status === 'pending')) {
       update(item.id, { status: 'extracting' })
       let draft
       try {
@@ -407,29 +338,23 @@ function BulkPhotoTab({ onSaved }) {
 
       update(item.id, { status: 'saving' })
       try {
-        const res = await fetch('/api/save-recipe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(draft),
-        })
-        const data = await res.json()
-        if (res.status === 409) {
-          update(item.id, { status: 'duplicate', note: data.error })
-        } else if (!res.ok) {
-          throw new Error(data.error || 'Save failed')
+        const { duplicate: dup, result } = await saveDraft(draft)
+        if (dup) {
+          update(item.id, { status: 'duplicate', note: dup.error })
         } else {
-          update(item.id, { status: 'done', title: data.title })
+          update(item.id, { status: 'done', title: result.title })
         }
       } catch (err) {
         update(item.id, { status: 'error', note: err.message })
       }
     }
     setRunning(false); setFinished(true)
-    onSaved?.()
+    onSaved()
   }
 
-  const counts = items.reduce((a, it) => { a[it.status] = (a[it.status] || 0) + 1; return a }, {})
+  const counts       = items.reduce((a, it) => { a[it.status] = (a[it.status] || 0) + 1; return a }, {})
   const pendingCount = counts.pending || 0
+  const activeIdx    = items.findIndex(i => i.status === 'extracting' || i.status === 'saving')
 
   return (
     <div className="space-y-4">
@@ -461,12 +386,8 @@ function BulkPhotoTab({ onSaved }) {
         <div className="border border-gray-800 rounded overflow-hidden">
           <div className="max-h-96 overflow-y-auto">
             {items.map(item => (
-              <BulkItemRow
-                key={item.id}
-                item={item}
-                running={running}
-                onRemove={id => setItems(p => p.filter(i => i.id !== id))}
-              />
+              <BulkItemRow key={item.id} item={item} running={running}
+                onRemove={id => setItems(p => p.filter(i => i.id !== id))} />
             ))}
           </div>
         </div>
@@ -485,9 +406,7 @@ function BulkPhotoTab({ onSaved }) {
         {running ? (
           <div className="flex-1 flex items-center justify-center gap-3 py-3 text-sm text-gray-400 bg-[#161B22] rounded border border-gray-800">
             <span className="inline-block w-4 h-4 border-2 border-[#D35400] border-t-transparent rounded-full animate-spin" />
-            Processing {items.filter(i => i.status === 'extracting' || i.status === 'saving').length > 0
-              ? `${items.findIndex(i => i.status === 'extracting' || i.status === 'saving') + 1} of ${items.length}`
-              : '…'}
+            {activeIdx >= 0 ? `Processing ${activeIdx + 1} of ${items.length}` : 'Processing…'}
           </div>
         ) : pendingCount > 0 ? (
           <button onClick={processAll}
@@ -546,10 +465,6 @@ export default function HomeClient() {
   const router = useRouter()
   const [tab, setTab] = useState('reel')
 
-  function handleSaved() {
-    router.refresh()
-  }
-
   return (
     <div>
       <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight mb-1">ADD RECIPE</h1>
@@ -566,12 +481,24 @@ export default function HomeClient() {
         ))}
       </div>
 
-      {tab === 'reel'  && <ReelTab  onSaved={handleSaved} />}
-      {tab === 'url'   && <UrlTab   onSaved={handleSaved} />}
-      {tab === 'pdf'   && <PdfTab   onSaved={handleSaved} />}
-      {tab === 'image' && <PhotoTab onSaved={handleSaved} />}
-      {tab === 'bulk'  && <BulkPhotoTab onSaved={handleSaved} />}
-      {tab === 'text'  && <TextTab  onSaved={handleSaved} />}
+      {tab === 'reel'  && <ReelTab onSaved={router.refresh} />}
+      {tab === 'url'   && <UrlTab  onSaved={router.refresh} />}
+      {tab === 'pdf'   && (
+        <FileImportTab
+          fileType="pdf" icon="📄" accept=".pdf,application/pdf"
+          hint="Upload a PDF recipe card, cookbook page scan, or any PDF containing a recipe."
+          onSaved={router.refresh}
+        />
+      )}
+      {tab === 'image' && (
+        <FileImportTab
+          fileType="image" icon="📷" accept="image/*"
+          hint="Take a photo of a handwritten recipe card, a cookbook page, or a printed recipe. GPT-4o Vision will read it."
+          onSaved={router.refresh}
+        />
+      )}
+      {tab === 'bulk'  && <BulkPhotoTab onSaved={router.refresh} />}
+      {tab === 'text'  && <TextTab      onSaved={router.refresh} />}
     </div>
   )
 }

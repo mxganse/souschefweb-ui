@@ -1,25 +1,8 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { SOURCE_META } from '@/lib/sourceMeta'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Admin — SousChef' }
-
-const SOURCE_ICON = {
-  'Instagram Extract':    '📸',
-  'Instagram Extraction': '📸',
-  'Web Import':           '🌐',
-  'PDF Import':           '📄',
-  'Image Import':         '📷',
-  'Text Import':          '📝',
-}
-
-const SOURCE_LABEL = {
-  'Instagram Extract':    'Instagram',
-  'Instagram Extraction': 'Instagram',
-  'Web Import':           'Web',
-  'PDF Import':           'PDF',
-  'Image Import':         'Photo',
-  'Text Import':          'Text',
-}
 
 // ── Status indicator ──────────────────────────────────────────────────────────
 const STATUS_CONF = {
@@ -217,8 +200,8 @@ export default async function AdminPage() {
           <div className="space-y-3">
             {sources.map(([source, count]) => (
               <div key={source} className="flex items-center gap-3">
-                <span className="w-6 text-base flex-shrink-0">{SOURCE_ICON[source] || '📋'}</span>
-                <span className="w-24 text-sm text-gray-300 flex-shrink-0">{SOURCE_LABEL[source] || source}</span>
+                <span className="w-6 text-base flex-shrink-0">{SOURCE_META[source]?.icon || '📋'}</span>
+                <span className="w-24 text-sm text-gray-300 flex-shrink-0">{SOURCE_META[source]?.label || source}</span>
                 <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
                   <div
                     className="bg-[#D35400] h-2 rounded-full transition-all"
@@ -266,7 +249,7 @@ export default async function AdminPage() {
           <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
             {recent.map(r => (
               <div key={r.id} className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors">
-                <span className="text-base flex-shrink-0">{SOURCE_ICON[r.source_type] || '📋'}</span>
+                <span className="text-base flex-shrink-0">{SOURCE_META[r.source_type]?.icon || '📋'}</span>
                 <span className="flex-1 text-sm text-gray-300 truncate">{r.title}</span>
                 <span className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
                   {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
