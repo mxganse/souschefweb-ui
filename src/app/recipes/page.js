@@ -8,7 +8,7 @@ export default async function RecipesPage() {
 
   const { data: recipes, error } = await supabase
     .from('recipes')
-    .select('id, title, category, source_type, source_url, created_at, instructions_markdown')
+    .select('id, title, category, source_type, source_url, created_at, instructions_markdown, submitted_by')
     .order('created_at', { ascending: false })
 
   if (error) {

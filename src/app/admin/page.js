@@ -1,6 +1,7 @@
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SOURCE_META } from '@/lib/sourceMeta'
+import InviteSection from './InviteSection'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Admin — SousChef' }
@@ -186,6 +187,9 @@ export default async function AdminPage() {
           />
         </div>
       </section>
+
+      {/* Invite user */}
+      <InviteSection />
 
       {/* Summary cards */}
       <section>

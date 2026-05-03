@@ -1,0 +1,16 @@
+# Build output
+.next/
+node_modules/
+.vercel/
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Large static assets
+public/
+cookies.txt
+
+# Boilerplate
+README.md
+eslint.config.mjs

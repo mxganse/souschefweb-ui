@@ -75,6 +75,7 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
           <p className="text-xs text-gray-500 mt-0.5">
             {formatDate(recipe.created_at)}
             {category && category !== 'Unknown' ? ` · @${category}` : ''}
+            {recipe.submitted_by ? ` · submitted by ${recipe.submitted_by}` : ''}
           </p>
         </div>
         <span className="text-gray-600 text-xs mt-0.5 group-open:rotate-90 transition-transform">▶</span>
@@ -113,6 +114,12 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
           >
             View original source →
           </a>
+        )}
+
+        {recipe.submitted_by && (
+          <p className="text-xs text-gray-500">
+            <span className="font-bold text-gray-400">Submitted by</span> {recipe.submitted_by}
+          </p>
         )}
 
         <div>

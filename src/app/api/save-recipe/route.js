@@ -35,6 +35,10 @@ export async function POST(request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const submittedBy = user.email !== 'mxganse@gmail.com'
+      ? (user.user_metadata?.full_name || user.email)
+      : null
+
     // ── Duplicate check 1: title (case-insensitive exact) ──────────────────
     const { data: titleMatch } = await supabase
       .from('recipes')
@@ -80,6 +84,7 @@ export async function POST(request) {
         source_url: sourceUrl,
         instructions_markdown: markdown,
         user_id: user.id,
+        submitted_by: submittedBy,
       })
       .select('id')
       .single()

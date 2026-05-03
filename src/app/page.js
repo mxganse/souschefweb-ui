@@ -11,7 +11,7 @@ export default async function HomePage() {
   // RLS filters recipes automatically to the signed-in user.
   const { data: recipes } = await supabase
     .from('recipes')
-    .select('id, title, category, source_type, source_url, created_at, instructions_markdown')
+    .select('id, title, category, source_type, source_url, created_at, instructions_markdown, submitted_by')
     .order('created_at', { ascending: false })
 
   return (
