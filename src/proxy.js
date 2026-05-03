@@ -5,9 +5,10 @@ export async function proxy(request) {
   let supabaseResponse = NextResponse.next({ request })
 
   // Build a Supabase client that can read/write cookies in this request/response cycle.
+  const clean = s => (s || '').replace(/^﻿/, '').trim()
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     {
       cookies: {
         getAll() {
