@@ -1,7 +1,12 @@
 'use client'
 import { supabase } from '@/lib/supabase/client'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -16,6 +21,11 @@ export default function LoginPage() {
           <h1 className="text-3xl font-black text-[#D35400] tracking-tight">SOUSCHEF</h1>
           <p className="text-gray-500 text-sm mt-2">Sign in to access your recipe archive</p>
         </div>
+        {error && (
+          <div className="p-3 bg-red-950 border border-red-800 rounded text-sm text-red-300 text-left font-mono break-all">
+            {error}
+          </div>
+        )}
         <button
           onClick={signInWithGoogle}
           className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 active:bg-gray-200 text-gray-900 font-bold py-3 px-4 rounded-lg transition-colors shadow-sm"
@@ -25,6 +35,14 @@ export default function LoginPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
 
