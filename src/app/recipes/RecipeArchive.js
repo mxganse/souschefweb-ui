@@ -153,7 +153,7 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
   }
 
   return (
-    <details id={`recipe-${recipe.id}`} ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group">
+    <details ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group">
       <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
         <SourceIcon type={recipe.source_type} />
         {recipe.recipe_type === 'beverage' && <span className="text-xs">🍹</span>}
@@ -165,7 +165,7 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
             {recipe.submitted_by ? ` · submitted by ${recipe.submitted_by}` : ''}
           </p>
         </div>
-        <span className="text-gray-600 text-xs mt-0.5 rotate-90 group-open:rotate-0 transition-transform">▼</span>
+        <span className="text-gray-600 text-xs mt-0.5 group-open:rotate-90 transition-transform">▶</span>
       </summary>
 
       <div className="px-4 pb-4 space-y-3 border-t border-gray-800 pt-3">
@@ -412,38 +412,9 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   const [sort, setSort]                 = useState('newest')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [page, setPage]                 = useState(1)
-  const pendingHighlight                = useRef(null)
 
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
-
-  // On mount, read ?recipe=<id> and jump to that card
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('recipe')
-    if (!id) return
-    const sorted = [...initialRecipes].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    const idx = sorted.findIndex(r => r.id === id)
-    if (idx === -1) return
-    const targetPage = Math.floor(idx / ITEMS_PER_PAGE) + 1
-    if (targetPage === 1) {
-      const el = document.getElementById(`recipe-${id}`)
-      if (el) { el.open = true; setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50) }
-    } else {
-      pendingHighlight.current = id
-      setPage(targetPage)
-    }
-  }, [])
-
-  // After page change (triggered by highlight nav), open the card
-  useEffect(() => {
-    const id = pendingHighlight.current
-    if (!id) return
-    const el = document.getElementById(`recipe-${id}`)
-    if (!el) return
-    pendingHighlight.current = null
-    el.open = true
-    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-  }, [page])
 
   function handleSearch(v)  { setSearch(v);       setPage(1) }
   function handleSource(v)  { setSourceFilter(v); setPage(1) }
