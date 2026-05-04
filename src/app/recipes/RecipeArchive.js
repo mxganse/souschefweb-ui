@@ -460,11 +460,6 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
         <span className="text-xs text-gray-500">{recipes.length} recipes</span>
       </div>
 
-      {/* DEBUG — remove after diagnosis */}
-      <div className="mb-2 p-2 bg-yellow-950 border border-yellow-700 rounded text-xs font-mono text-yellow-300">
-        uid: {currentUserId ?? 'NULL'} · admin: {String(isAdmin)}
-      </div>
-
       {/* Search + Sort */}
       <div className="flex flex-col sm:flex-row gap-3 mt-4 mb-3">
         <input

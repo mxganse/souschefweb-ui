@@ -21,8 +21,6 @@ export default async function RecipesPage() {
     )
   }
 
-  console.log('[recipes/page] user:', user?.id ?? 'NULL', user?.email ?? 'no email')
-
   const isAdmin = user?.email === 'mxganse@gmail.com'
 
   return (
