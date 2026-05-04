@@ -1,5 +1,16 @@
 import { createSessionClient } from '@/lib/supabase/server'
 
+const BEVERAGE_KEYWORDS = [
+  'shake', 'stir', 'garnish', 'strainer', 'jigger', 'cocktail', 'spirit',
+  'bourbon', 'gin', 'vodka', 'rum', 'whiskey', 'vermouth', 'bitters',
+  'liqueur', 'amaro', 'mezcal', 'tequila',
+]
+
+function detectBeverage(title, markdown) {
+  const hay = `${title} ${markdown}`.toLowerCase()
+  return BEVERAGE_KEYWORDS.some(kw => hay.includes(kw))
+}
+
 function parseMarkdown(markdown) {
   const titleMatch = markdown.match(/^#\s+(.+)$/m)
   const title = titleMatch ? titleMatch[1].trim() : 'Untitled Recipe'
@@ -26,7 +37,7 @@ function getContentFingerprint(markdown) {
 
 export async function POST(request) {
   try {
-    const { markdown, sourceType, sourceUrl = null, creator = null } = await request.json()
+    const { markdown, sourceType, sourceUrl = null, creator = null, force = false, recipeType = null } = await request.json()
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
     const { title, ingredients } = parseMarkdown(markdown)
@@ -39,40 +50,45 @@ export async function POST(request) {
       ? (user.user_metadata?.full_name || user.email)
       : null
 
-    // ── Duplicate check 1: title (case-insensitive exact) ──────────────────
-    const { data: titleMatch } = await supabase
-      .from('recipes')
-      .select('id, title')
-      .ilike('title', title.trim())
-      .maybeSingle()
-
-    if (titleMatch) {
-      return Response.json(
-        { error: `"${titleMatch.title}" is already in your archive.`, duplicate: true, existingId: titleMatch.id },
-        { status: 409 }
-      )
-    }
-
-    // ── Duplicate check 2: content fingerprint (free — no AI) ──────────────
-    const fingerprint = getContentFingerprint(markdown)
-    if (fingerprint) {
-      const { data: contentMatch } = await supabase
+    if (!force) {
+      // ── Duplicate check 1: title (case-insensitive exact) ────────────────
+      const { data: titleMatch } = await supabase
         .from('recipes')
         .select('id, title')
-        .ilike('instructions_markdown', `%${fingerprint}%`)
+        .ilike('title', title.trim())
         .maybeSingle()
 
-      if (contentMatch) {
+      if (titleMatch) {
         return Response.json(
-          {
-            error: `This recipe appears to already exist as "${contentMatch.title}".`,
-            duplicate: true,
-            existingId: contentMatch.id,
-          },
+          { error: `"${titleMatch.title}" is already in your archive.`, duplicate: true, existingId: titleMatch.id },
           { status: 409 }
         )
       }
+
+      // ── Duplicate check 2: content fingerprint (free — no AI) ────────────
+      const fingerprint = getContentFingerprint(markdown)
+      if (fingerprint) {
+        const { data: contentMatch } = await supabase
+          .from('recipes')
+          .select('id, title')
+          .ilike('instructions_markdown', `%${fingerprint}%`)
+          .maybeSingle()
+
+        if (contentMatch) {
+          return Response.json(
+            {
+              error: `This recipe appears to already exist as "${contentMatch.title}".`,
+              duplicate: true,
+              existingId: contentMatch.id,
+            },
+            { status: 409 }
+          )
+        }
+      }
     }
+
+    // ── Detect beverage type ───────────────────────────────────────────────
+    const detectedType = recipeType || (detectBeverage(title, markdown) ? 'beverage' : 'food')
 
     // ── Save ───────────────────────────────────────────────────────────────
     const { data: recipe, error: recipeError } = await supabase
@@ -85,6 +101,7 @@ export async function POST(request) {
         instructions_markdown: markdown,
         user_id: user.id,
         submitted_by: submittedBy,
+        recipe_type: detectedType,
       })
       .select('id')
       .single()

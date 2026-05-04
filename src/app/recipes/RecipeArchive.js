@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { SOURCE_META } from '@/lib/sourceMeta'
+import ScalingPanel from './ScalingPanel'
 
 const ITEMS_PER_PAGE = 20
 
@@ -12,6 +13,7 @@ const SOURCE_FILTERS = [
   { id: 'PDF Import',          label: '📄 PDF' },
   { id: 'Image Import',        label: '📷 Photo' },
   { id: 'Text Import',         label: '📝 Text' },
+  { id: 'beverage',            label: '🍹 Beverage' },
 ]
 
 function formatDate(iso) {
@@ -25,7 +27,7 @@ function SourceIcon({ type }) {
   return <span className="text-base" title={meta.label}>{meta.icon}</span>
 }
 
-function RecipeCard({ recipe, onDelete, onUpdate }) {
+function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
   const detailsRef              = useRef()
   const [title, setTitle]       = useState(recipe.title || '')
   const [category, setCategory] = useState(recipe.category || '')
@@ -33,17 +35,85 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showScale, setShowScale] = useState(false)
+  const [scaleState, setScaleState] = useState({ factor: 1, system: 'auto' })
+  const [recipeType, setRecipeType]         = useState(recipe.recipe_type || 'food')
+  const [versions, setVersions]             = useState(null)
+  const [showHistory, setShowHistory]       = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [emailSending, setEmailSending]     = useState(false)
+  const [emailSent, setEmailSent]           = useState(false)
+
+  const canEdit = isAdmin || (currentUserId && recipe.user_id === currentUserId)
+
+  function track(event, metadata = {}) {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, metadata }),
+    }).catch(() => {})
+  }
+
+  async function loadVersions() {
+    setLoadingHistory(true)
+    const res = await fetch(`/api/recipe-versions/${recipe.id}`)
+    const data = await res.json()
+    setLoadingHistory(false)
+    if (res.ok) setVersions(data.versions)
+  }
+
+  async function emailCard() {
+    setEmailSending(true)
+    setEmailSent(false)
+    const res = await fetch('/api/send-recipe-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        category: recipe.category,
+        source_url: recipe.source_url,
+        created_at: recipe.created_at,
+        instructions_markdown: text,
+      }),
+    })
+    setEmailSending(false)
+    if (res.ok) {
+      setEmailSent(true)
+      setTimeout(() => setEmailSent(false), 3000)
+    }
+  }
 
   async function saveEdits() {
     setSaving(true)
+
+    // Snapshot current state before overwriting
+    const { data: latestVersion } = await supabase
+      .from('recipe_versions')
+      .select('version_number')
+      .eq('recipe_id', recipe.id)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const nextVersion = (latestVersion?.version_number ?? 0) + 1
+    await supabase.from('recipe_versions').insert({
+      recipe_id: recipe.id,
+      user_id: currentUserId,
+      version_number: nextVersion,
+      title,
+      category,
+      instructions_markdown: text,
+    })
+
     await supabase
       .from('recipes')
-      .update({ title, category: category || null, instructions_markdown: text })
+      .update({ title, category: category || null, instructions_markdown: text, recipe_type: recipeType })
       .eq('id', recipe.id)
     setSaving(false)
     setSaved(true)
-    onUpdate(recipe.id, { title, category: category || null, instructions_markdown: text })
+    onUpdate(recipe.id, { title, category: category || null, instructions_markdown: text, recipe_type: recipeType })
     setTimeout(() => setSaved(false), 2000)
+    if (showHistory) loadVersions()
   }
 
   function handleCancel() {
@@ -61,15 +131,47 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
     onDelete(recipe.id)
   }
 
-  function downloadPdf() {
-    const params = new URLSearchParams({ id: recipe.id })
-    window.open(`/api/export-pdf?${params}`, '_blank')
+  async function downloadPdf() {
+    const isScaled = Math.abs(scaleState.factor - 1) > 0.001
+
+    if (isScaled) {
+      // Build scaled markdown client-side, POST it to the PDF endpoint
+      const { buildScaledMarkdown } = await import('@/lib/ingredients')
+      const scaledMarkdown = buildScaledMarkdown(text, scaleState.factor, scaleState.system)
+
+      track('scale_pdf_download', { scaleFactor: scaleState.factor })
+
+      const res = await fetch('/api/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title,
+          category: recipe.category,
+          source_url: recipe.source_url,
+          created_at: recipe.created_at,
+          instructions_markdown: scaledMarkdown,
+        }),
+      })
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${(title || 'recipe').replace(/[^a-zA-Z0-9\s_-]/g, '').replace(/\s+/g, '_')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } else {
+      track('pdf_download')
+      const params = new URLSearchParams({ id: recipe.id })
+      window.open(`/api/export-pdf?${params}`, '_blank')
+    }
   }
 
   return (
     <details ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group">
       <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
         <SourceIcon type={recipe.source_type} />
+        {recipe.recipe_type === 'beverage' && <span className="text-xs">🍹</span>}
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm leading-snug">{title || recipe.title}</p>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -90,7 +192,8 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors"
+              className={`w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors ${!canEdit ? 'opacity-60 cursor-default' : ''}`}
+              readOnly={!canEdit}
             />
           </div>
           <div>
@@ -100,9 +203,33 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
               value={category}
               onChange={e => setCategory(e.target.value)}
               placeholder="@username or source name"
-              className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors"
+              className={`w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#D35400] transition-colors ${!canEdit ? 'opacity-60 cursor-default' : ''}`}
+              readOnly={!canEdit}
             />
           </div>
+          {canEdit && (
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Type</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRecipeType('food')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded border transition-colors ${
+                    recipeType === 'food'
+                      ? 'bg-[#D35400] border-[#D35400] text-white'
+                      : 'border-gray-700 text-gray-400 hover:border-gray-500'
+                  }`}
+                >🍽 Food</button>
+                <button
+                  onClick={() => setRecipeType('beverage')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded border transition-colors ${
+                    recipeType === 'beverage'
+                      ? 'bg-[#D35400] border-[#D35400] text-white'
+                      : 'border-gray-700 text-gray-400 hover:border-gray-500'
+                  }`}
+                >🍹 Beverage</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {recipe.source_url && (
@@ -128,15 +255,34 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
             value={text}
             onChange={e => setText(e.target.value)}
             rows={12}
+            readOnly={!canEdit}
             className="w-full bg-[#0E1117] border border-gray-700 rounded px-3 py-2 text-base sm:text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-none"
           />
         </div>
 
+        {recipeType !== 'beverage' && showScale && <ScalingPanel markdown={text} onScaleChange={s => setScaleState(s)} />}
+
         <div className="flex flex-col gap-2">
+          {recipeType !== 'beverage' && (
+            <button
+              onClick={() => {
+                const next = !showScale
+                if (next) track('scale_panel_open')
+                setShowScale(next)
+              }}
+              className={`w-full text-sm font-bold py-2.5 rounded border transition-colors ${
+                showScale
+                  ? 'bg-[#D35400]/10 border-[#D35400] text-[#D35400]'
+                  : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+              }`}
+            >
+              {showScale ? '⚖ Hide Scaling' : '⚖ Scale Recipe'}
+            </button>
+          )}
           <div className="flex gap-2">
             <button
               onClick={saveEdits}
-              disabled={saving}
+              disabled={saving || !canEdit}
               className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded transition-colors"
             >
               {saving ? 'Saving...' : saved ? 'Saved ✓' : 'SAVE EDITS'}
@@ -147,7 +293,18 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
             >
               DOWNLOAD PDF
             </button>
+            <button
+              onClick={emailCard}
+              disabled={emailSending}
+              title="Send PDF to your email"
+              className="px-3 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded transition-colors"
+            >
+              {emailSending ? '…' : emailSent ? '✓' : '📧'}
+            </button>
           </div>
+          {!canEdit && (
+            <p className="text-xs text-gray-600 italic text-center py-1">View only — not your recipe</p>
+          )}
           <div className="flex gap-2">
             <button
               onClick={handleCancel}
@@ -155,14 +312,60 @@ function RecipeCard({ recipe, onDelete, onUpdate }) {
             >
               CANCEL
             </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex-1 bg-transparent border border-red-900 hover:bg-red-950 hover:border-red-700 disabled:opacity-40 text-red-500 hover:text-red-400 text-sm font-bold py-2.5 rounded transition-colors"
-            >
-              {deleting ? 'Deleting…' : 'DELETE'}
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-transparent border border-red-900 hover:bg-red-950 hover:border-red-700 disabled:opacity-40 text-red-500 hover:text-red-400 text-sm font-bold py-2.5 rounded transition-colors"
+              >
+                {deleting ? 'Deleting…' : 'DELETE'}
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* Version History */}
+        <div className="border-t border-gray-800 pt-3">
+          <button
+            onClick={() => {
+              const next = !showHistory
+              setShowHistory(next)
+              if (next && versions === null) loadVersions()
+            }}
+            className="text-xs text-gray-500 hover:text-gray-300 font-bold flex items-center gap-1 transition-colors"
+          >
+            🕒 Version History {showHistory ? '▴' : '▾'}
+          </button>
+          {showHistory && (
+            <div className="mt-2 space-y-1">
+              {loadingHistory && <p className="text-xs text-gray-600">Loading…</p>}
+              {versions?.length === 0 && !loadingHistory && (
+                <p className="text-xs text-gray-600 italic">No saved versions yet.</p>
+              )}
+              {versions?.map(v => (
+                <div key={v.id} className="flex items-center justify-between py-1.5 border-b border-gray-800/50 last:border-0">
+                  <div>
+                    <span className="text-xs font-mono text-gray-400">v{v.version_number}</span>
+                    <span className="text-xs text-gray-600 ml-2">
+                      {new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => {
+                        setTitle(v.title || '')
+                        setCategory(v.category || '')
+                        setText(v.instructions_markdown || '')
+                      }}
+                      className="text-xs text-[#D35400] hover:text-[#E67E22] font-bold transition-colors"
+                    >
+                      Restore
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </details>
@@ -218,7 +421,7 @@ function Pagination({ page, pageCount, onPage }) {
   )
 }
 
-export default function RecipeArchive({ initialRecipes }) {
+export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }) {
   const [recipes, setRecipes]         = useState(initialRecipes)
   const [search, setSearch]           = useState('')
   const [sort, setSort]               = useState('newest')
@@ -242,7 +445,9 @@ export default function RecipeArchive({ initialRecipes }) {
 
   const filtered = recipes
     .filter(r => {
-      if (sourceFilter === 'Instagram Extract') {
+      if (sourceFilter === 'beverage') {
+        if (r.recipe_type !== 'beverage') return false
+      } else if (sourceFilter === 'Instagram Extract') {
         if (!['Instagram Extract', 'Instagram Extraction'].includes(r.source_type)) return false
       } else if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false
       if (!search) return true
@@ -330,6 +535,8 @@ export default function RecipeArchive({ initialRecipes }) {
               recipe={r}
               onDelete={handleDelete}
               onUpdate={handleUpdate}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
             />
           ))}
         </div>

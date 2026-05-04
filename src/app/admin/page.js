@@ -2,6 +2,7 @@ import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SOURCE_META } from '@/lib/sourceMeta'
 import InviteSection from './InviteSection'
+import UsersSection from './UsersSection'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Admin — SousChef' }
@@ -57,7 +58,7 @@ export default async function AdminPage() {
   const workerPingUrl = workerBaseUrl ? `${workerBaseUrl.replace(/\/$/, '')}/health` : null
 
   const t0 = Date.now()
-  const [recipesRes, ingredientCountRes, workerPingRes] = await Promise.allSettled([
+  const [recipesRes, ingredientCountRes, workerPingRes, featureEventsRes] = await Promise.allSettled([
     supabase
       .from('recipes')
       .select('id, title, source_type, created_at')
@@ -68,11 +69,16 @@ export default async function AdminPage() {
     workerPingUrl
       ? fetch(workerPingUrl, { signal: AbortSignal.timeout(4000), cache: 'no-store' })
       : Promise.resolve(null),
+    supabase
+      .from('feature_events')
+      .select('event_name, created_at')
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
   ])
   const dbLatency = Date.now() - t0
 
   const recipes       = recipesRes.status === 'fulfilled' ? (recipesRes.value.data ?? []) : []
   const ingredientCount = ingredientCountRes.status === 'fulfilled' ? (ingredientCountRes.value.count ?? 0) : 0
+  const featureEvents = featureEventsRes.status === 'fulfilled' ? (featureEventsRes.value.data ?? []) : []
 
   // ── Connectivity status ───────────────────────────────────────────────────
   // Supabase
@@ -149,6 +155,21 @@ export default async function AdminPage() {
 
   const recent = recipes.slice(0, 15)
 
+  // ── Feature usage ─────────────────────────────────────────────────────────
+  const EVENT_LABELS = {
+    pdf_download:        { label: 'PDF Downloads',        icon: '📄' },
+    scale_panel_open:    { label: 'Scaling Panel Opens',  icon: '⚖' },
+    scale_pdf_download:  { label: 'Scaled PDF Downloads', icon: '📐' },
+    bakers_percent_view: { label: "Baker's % Views",      icon: '🧑‍🍳' },
+    scale_mode_yield:    { label: 'Target Yield Mode',    icon: '🎯' },
+    scale_mode_key:      { label: 'Key Ingredient Mode',  icon: '🔑' },
+  }
+
+  const eventCounts = {}
+  for (const e of featureEvents) {
+    eventCounts[e.event_name] = (eventCounts[e.event_name] || 0) + 1
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-10">
 
@@ -190,6 +211,38 @@ export default async function AdminPage() {
 
       {/* Invite user */}
       <InviteSection />
+
+      {/* User management */}
+      <UsersSection />
+
+      {/* Feature Usage */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Feature Usage — Last 30 Days</h2>
+        <div className="bg-[#161B22] border border-gray-800 rounded-lg divide-y divide-gray-800">
+          {Object.entries(EVENT_LABELS).map(([key, { label, icon }]) => {
+            const count = eventCounts[key] || 0
+            const max = Math.max(...Object.values(eventCounts), 1)
+            return (
+              <div key={key} className="flex items-center gap-3 px-4 py-3">
+                <span className="text-base flex-shrink-0">{icon}</span>
+                <span className="w-44 text-sm text-gray-300 flex-shrink-0">{label}</span>
+                <div className="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-[#D35400] h-1.5 rounded-full transition-all"
+                    style={{ width: count === 0 ? '0%' : `${Math.max(4, (count / max) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+                <span className="w-12 text-right text-sm font-bold tabular-nums text-gray-300 flex-shrink-0">
+                  {count.toLocaleString()}
+                </span>
+              </div>
+            )
+          })}
+          {featureEvents.length === 0 && (
+            <div className="px-4 py-4 text-xs text-gray-600 italic">No events recorded yet — stats will appear as features are used.</div>
+          )}
+        </div>
+      </section>
 
       {/* Summary cards */}
       <section>

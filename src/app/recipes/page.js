@@ -6,10 +6,12 @@ export const dynamic = 'force-dynamic'
 export default async function RecipesPage() {
   const supabase = await createSessionClient()
 
-  const { data: recipes, error } = await supabase
-    .from('recipes')
-    .select('id, title, category, source_type, source_url, created_at, instructions_markdown, submitted_by')
-    .order('created_at', { ascending: false })
+  const [{ data: { user } }, { data: recipes, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from('recipes')
+      .select('id, title, category, source_type, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type')
+      .order('created_at', { ascending: false }),
+  ])
 
   if (error) {
     return (
@@ -19,5 +21,13 @@ export default async function RecipesPage() {
     )
   }
 
-  return <RecipeArchive initialRecipes={recipes ?? []} />
+  const isAdmin = user?.email === 'mxganse@gmail.com'
+
+  return (
+    <RecipeArchive
+      initialRecipes={recipes ?? []}
+      currentUserId={user?.id ?? null}
+      isAdmin={isAdmin}
+    />
+  )
 }

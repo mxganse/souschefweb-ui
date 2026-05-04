@@ -38,6 +38,14 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
     } catch (err) { setError(err.message); setSaving(false) }
   }
 
+  async function handleSaveForce() {
+    setSaving(true); setDuplicate(null); setError(null)
+    try {
+      const { result } = await saveDraft({ ...draft, markdown, force: true })
+      onSave(result)
+    } catch (err) { setError(err.message); setSaving(false) }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -56,6 +64,9 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
         <div className="p-4 bg-yellow-950 border border-yellow-700 rounded text-sm text-yellow-300 space-y-1">
           <p>⚠️ {duplicate.error}</p>
           <a href="#archive" className="inline-block text-[#D35400] hover:text-[#E67E22] underline">View in Archive ↓</a>
+          <button onClick={handleSaveForce} disabled={saving} className="block text-yellow-300 hover:text-yellow-100 underline text-sm mt-1 disabled:opacity-40">
+            Save anyway →
+          </button>
         </div>
       )}
       {error && <div className="p-4 bg-red-950 border border-red-700 rounded text-sm text-red-300">{error}</div>}
