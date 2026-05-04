@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase/client'
 import { SOURCE_META } from '@/lib/sourceMeta'
 import ScalingPanel from './ScalingPanel'
 
@@ -85,31 +84,13 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
 
   async function saveEdits() {
     setSaving(true)
-
-    // Snapshot current state before overwriting
-    const { data: latestVersion } = await supabase
-      .from('recipe_versions')
-      .select('version_number')
-      .eq('recipe_id', recipe.id)
-      .order('version_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const nextVersion = (latestVersion?.version_number ?? 0) + 1
-    await supabase.from('recipe_versions').insert({
-      recipe_id: recipe.id,
-      user_id: currentUserId,
-      version_number: nextVersion,
-      title,
-      category,
-      instructions_markdown: text,
+    const res = await fetch('/api/recipe-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recipe.id, title, category, instructions_markdown: text, recipe_type: recipeType }),
     })
-
-    await supabase
-      .from('recipes')
-      .update({ title, category: category || null, instructions_markdown: text, recipe_type: recipeType })
-      .eq('id', recipe.id)
     setSaving(false)
+    if (!res.ok) return
     setSaved(true)
     onUpdate(recipe.id, { title, category: category || null, instructions_markdown: text, recipe_type: recipeType })
     setTimeout(() => setSaved(false), 2000)
@@ -126,9 +107,13 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
   async function handleDelete() {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
     setDeleting(true)
-    await supabase.from('ingredients').delete().eq('recipe_id', recipe.id)
-    await supabase.from('recipes').delete().eq('id', recipe.id)
-    onDelete(recipe.id)
+    const res = await fetch('/api/recipe-update', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: recipe.id }),
+    })
+    if (res.ok) onDelete(recipe.id)
+    else setDeleting(false)
   }
 
   async function downloadPdf() {
@@ -421,30 +406,15 @@ function Pagination({ page, pageCount, onPage }) {
   )
 }
 
-const ADMIN_EMAIL = 'mxganse@gmail.com'
-
-export default function RecipeArchive({ initialRecipes, currentUserId: serverUserId, isAdmin: serverIsAdmin }) {
-  const [recipes, setRecipes]         = useState(initialRecipes)
-  const [search, setSearch]           = useState('')
-  const [sort, setSort]               = useState('newest')
+export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }) {
+  const [recipes, setRecipes]           = useState(initialRecipes)
+  const [search, setSearch]             = useState('')
+  const [sort, setSort]                 = useState('newest')
   const [sourceFilter, setSourceFilter] = useState('all')
-  const [page, setPage]               = useState(1)
-  const [currentUserId, setCurrentUserId] = useState(serverUserId)
-  const [isAdmin, setIsAdmin]             = useState(serverIsAdmin)
+  const [page, setPage]                 = useState(1)
 
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
-
-  // Re-verify identity client-side using onAuthStateChange — fires immediately
-  // with current session and is more reliable than getUser() for UI gating
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null
-      setCurrentUserId(user?.id ?? null)
-      setIsAdmin(user?.email === ADMIN_EMAIL)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
 
   function handleSearch(v)  { setSearch(v);       setPage(1) }
   function handleSource(v)  { setSourceFilter(v); setPage(1) }
