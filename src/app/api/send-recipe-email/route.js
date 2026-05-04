@@ -3,6 +3,9 @@ import { buildPdf, safeName } from '@/lib/buildPdf'
 import { Resend } from 'resend'
 
 export async function POST(request) {
+  if (!process.env.RESEND_API_KEY) {
+    return Response.json({ error: 'RESEND_API_KEY is not configured on this server' }, { status: 500 })
+  }
   const resend = new Resend(process.env.RESEND_API_KEY)
   const supabase = await createSessionClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -13,6 +13,9 @@ export async function POST(request) {
   const { email } = await request.json()
   if (!email?.trim()) return Response.json({ error: 'Email required' }, { status: 400 })
 
+  if (!process.env.RESEND_API_KEY) {
+    return Response.json({ error: 'RESEND_API_KEY is not configured on this server' }, { status: 500 })
+  }
   const resend = new Resend(process.env.RESEND_API_KEY)
   const supabase = createAdminClient()
 
