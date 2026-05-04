@@ -1,6 +1,7 @@
 import './globals.css'
 import { createSessionClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isAdminUser } from '@/lib/auth'
 
 export const metadata = {
   title: 'SousChef',
@@ -35,7 +36,7 @@ export default async function RootLayout({ children }) {
 
           {user ? (
             <>
-              {user.email === 'mxganse@gmail.com' && (
+              {isAdminUser(user) && (
                 <a href="/admin" className="text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
                   Admin
                 </a>

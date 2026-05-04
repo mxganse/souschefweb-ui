@@ -1,11 +1,10 @@
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
-
-const ADMIN_EMAIL = 'mxganse@gmail.com'
+import { isAdminUser } from '@/lib/auth'
 
 export async function DELETE(request, { params }) {
   const sessionClient = await createSessionClient()
   const { data: { user } } = await sessionClient.auth.getUser()
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!isAdminUser(user)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 

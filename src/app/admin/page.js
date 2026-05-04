@@ -1,5 +1,6 @@
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isAdminUser } from '@/lib/auth'
 import { SOURCE_META } from '@/lib/sourceMeta'
 import InviteSection from './InviteSection'
 import UsersSection from './UsersSection'
@@ -49,7 +50,7 @@ function StatCard({ label, value, sub }) {
 export default async function AdminPage() {
   const sessionSupabase = await createSessionClient()
   const { data: { user } } = await sessionSupabase.auth.getUser()
-  if (user?.email !== 'mxganse@gmail.com') redirect('/')
+  if (!isAdminUser(user)) redirect('/')
 
   const supabase = createAdminClient()
 

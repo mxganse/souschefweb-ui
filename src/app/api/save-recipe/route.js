@@ -1,4 +1,5 @@
 import { createSessionClient } from '@/lib/supabase/server'
+import { isAdminUser } from '@/lib/auth'
 
 const BEVERAGE_KEYWORDS = [
   'shake', 'stir', 'garnish', 'strainer', 'jigger', 'cocktail', 'spirit',
@@ -46,7 +47,7 @@ export async function POST(request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const submittedBy = user.email !== 'mxganse@gmail.com'
+    const submittedBy = !isAdminUser(user)
       ? (user.user_metadata?.full_name || user.email)
       : null
 

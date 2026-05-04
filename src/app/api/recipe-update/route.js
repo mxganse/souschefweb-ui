@@ -1,12 +1,11 @@
 import { createSessionClient } from '@/lib/supabase/server'
-
-const ADMIN_EMAIL = 'mxganse@gmail.com'
+import { isAdminUser } from '@/lib/auth'
 
 async function getAuthedUser(supabase, recipeId) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { user: null, canEdit: false }
 
-  const isAdmin = user.email === ADMIN_EMAIL
+  const isAdmin = isAdminUser(user)
   if (isAdmin) return { user, canEdit: true }
 
   const { data: recipe } = await supabase

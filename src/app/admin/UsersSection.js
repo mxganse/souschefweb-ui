@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { ADMIN_EMAIL } from '@/lib/auth'
 
 function fmt(iso) {
   if (!iso) return '—'
@@ -95,7 +96,7 @@ export default function UsersSection() {
         if (a.isAdmin) return -1
         if (b.isAdmin) return 1
         return new Date(b.created_at) - new Date(a.created_at)
-      }).map(u => ({ ...u, isAdmin: u.email === 'mxganse@gmail.com' }))
+      }).map(u => ({ ...u, isAdmin: u.email === ADMIN_EMAIL }))
     : null
 
   return (

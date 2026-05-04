@@ -1,12 +1,11 @@
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
-
-const ADMIN_EMAIL = 'mxganse@gmail.com'
+import { isAdminUser } from '@/lib/auth'
 
 export async function POST(request) {
   const sessionClient = await createSessionClient()
   const { data: { user } } = await sessionClient.auth.getUser()
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!isAdminUser(user)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 

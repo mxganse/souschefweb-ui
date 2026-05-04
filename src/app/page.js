@@ -1,4 +1,5 @@
 import { createSessionClient } from '@/lib/supabase/server'
+import { isAdminUser } from '@/lib/auth'
 import HomeClient from './HomeClient'
 import RecipeArchive from './recipes/RecipeArchive'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   const supabase = await createSessionClient()
 
-  const [{ data: { user } }, { data: recipes }] = await Promise.all([
+  const [{ data: { user } }, { data: recipes, error }] = await Promise.all([
     supabase.auth.getUser(),
     supabase
       .from('recipes')
@@ -15,7 +16,15 @@ export default async function HomePage() {
       .order('created_at', { ascending: false }),
   ])
 
-  const isAdmin = user?.email === 'mxganse@gmail.com'
+  if (error) {
+    return (
+      <div className="text-red-400 text-sm p-4 bg-red-950 border border-red-800 rounded">
+        Failed to load recipes: {error.message}
+      </div>
+    )
+  }
+
+  const isAdmin = isAdminUser(user)
 
   return (
     <div className="space-y-14">
