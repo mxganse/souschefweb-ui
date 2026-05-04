@@ -435,14 +435,15 @@ export default function RecipeArchive({ initialRecipes, currentUserId: serverUse
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
 
-  // Re-verify identity client-side — guards against server session not being available
+  // Re-verify identity client-side using onAuthStateChange — fires immediately
+  // with current session and is more reliable than getUser() for UI gating
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setCurrentUserId(user.id)
-        setIsAdmin(user.email === ADMIN_EMAIL)
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null
+      setCurrentUserId(user?.id ?? null)
+      setIsAdmin(user?.email === ADMIN_EMAIL)
     })
+    return () => subscription.unsubscribe()
   }, [])
 
   function handleSearch(v)  { setSearch(v);       setPage(1) }
