@@ -9,19 +9,25 @@ export default function InviteSection() {
   async function handleSubmit(e) {
     e.preventDefault()
     setStatus('sending'); setMessage('')
-    const res  = await fetch('/api/admin/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim() }),
-    })
-    const data = await res.json()
-    if (res.ok) {
-      setStatus('sent')
-      setMessage(`Invite sent to ${email}`)
-      setEmail('')
-    } else {
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      let data = {}
+      try { data = await res.json() } catch {}
+      if (res.ok) {
+        setStatus('sent')
+        setMessage(`Invite sent to ${email}`)
+        setEmail('')
+      } else {
+        setStatus('error')
+        setMessage(data.error || `Server error (${res.status})`)
+      }
+    } catch {
       setStatus('error')
-      setMessage(data.error || 'Failed to send invite')
+      setMessage('Network error — could not reach server')
     }
   }
 

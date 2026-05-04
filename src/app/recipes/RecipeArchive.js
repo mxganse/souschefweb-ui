@@ -421,15 +421,29 @@ function Pagination({ page, pageCount, onPage }) {
   )
 }
 
-export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }) {
+const ADMIN_EMAIL = 'mxganse@gmail.com'
+
+export default function RecipeArchive({ initialRecipes, currentUserId: serverUserId, isAdmin: serverIsAdmin }) {
   const [recipes, setRecipes]         = useState(initialRecipes)
   const [search, setSearch]           = useState('')
   const [sort, setSort]               = useState('newest')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [page, setPage]               = useState(1)
+  const [currentUserId, setCurrentUserId] = useState(serverUserId)
+  const [isAdmin, setIsAdmin]             = useState(serverIsAdmin)
 
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
+
+  // Re-verify identity client-side — guards against server session not being available
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setCurrentUserId(user.id)
+        setIsAdmin(user.email === ADMIN_EMAIL)
+      }
+    })
+  }, [])
 
   function handleSearch(v)  { setSearch(v);       setPage(1) }
   function handleSource(v)  { setSourceFilter(v); setPage(1) }
