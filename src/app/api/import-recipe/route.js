@@ -60,6 +60,22 @@ async function extractRecipeFromImage(base64, mimeType, openai) {
   return resp.choices[0].message.content.trim()
 }
 
+function extractJsonLdRecipe(html) {
+  const pattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  for (const match of html.matchAll(pattern)) {
+    try {
+      const raw = JSON.parse(match[1])
+      const nodes = Array.isArray(raw) ? raw : raw['@graph'] ? raw['@graph'] : [raw]
+      const recipe = nodes.find(n => {
+        const t = n['@type']
+        return t === 'Recipe' || (Array.isArray(t) && t.includes('Recipe'))
+      })
+      if (recipe) return recipe
+    } catch {}
+  }
+  return null
+}
+
 // ── Handler — extract only, no DB write ───────────────────────────────────────
 export async function POST(request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -76,22 +92,36 @@ export async function POST(request) {
         const url = body.url
         if (!url) return Response.json({ error: 'URL is required' }, { status: 400 })
 
+        const fetchHeaders = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' }
+        if (/cooking\.nytimes\.com/i.test(url) && process.env.NYT_COOKING_COOKIE) {
+          fetchHeaders['Cookie'] = process.env.NYT_COOKING_COOKIE
+        }
+
         const pageResp = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SousChef/1.0)' },
+          headers: fetchHeaders,
           signal: AbortSignal.timeout(20_000),
         })
         if (!pageResp.ok) throw new Error(`Could not fetch page: ${pageResp.status} ${pageResp.statusText}`)
 
         const html = await pageResp.text()
-        const text = html
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s{2,}/g, ' ')
-          .trim()
-          .slice(0, 24000)
 
-        markdown = await extractRecipeFromText(`Extract the recipe from this web page content:\n\n${text}`, openai)
+        // Prefer JSON-LD structured recipe data when available (more accurate than stripped HTML)
+        const jsonLdRecipe = extractJsonLdRecipe(html)
+        if (jsonLdRecipe) {
+          markdown = await extractRecipeFromText(
+            `Extract the recipe from this structured JSON-LD data:\n\n${JSON.stringify(jsonLdRecipe, null, 2).slice(0, 24000)}`,
+            openai
+          )
+        } else {
+          const text = html
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+            .slice(0, 24000)
+          markdown = await extractRecipeFromText(`Extract the recipe from this web page content:\n\n${text}`, openai)
+        }
         sourceUrl = url
 
       } else if (type === 'text') {
