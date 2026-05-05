@@ -348,9 +348,9 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions =
 // ── Main viewer ───────────────────────────────────────────────────────────────
 
 export default function ReferenceViewer({ initialData, isAdmin }) {
-  const [standards, setStandards] = useState(initialData)
-  const [search, setSearch]       = useState('')
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [standards, setStandards]       = useState(initialData)
+  const [search, setSearch]             = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   function handleUpdate(updated) {
     setStandards(prev => prev.map(s => s.id === updated.id ? updated : s))
@@ -360,16 +360,20 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
     setStandards(prev => prev.filter(s => s.id !== id))
   }
 
+  const allCategories = sortCategories(
+    standards.reduce((acc, s) => {
+      if (!acc[s.category]) acc[s.category] = []
+      return acc
+    }, {})
+  )
+
   const filtered = standards.filter(s => {
     const matchesSearch = !search || (
       s.title?.toLowerCase().includes(search.toLowerCase()) ||
       s.content_markdown?.toLowerCase().includes(search.toLowerCase()) ||
       s.category?.toLowerCase().includes(search.toLowerCase())
     )
-    if (!matchesSearch) return false
-
-    const refType = inferReferenceType(s.category)
-    return typeFilter === 'all' || refType === typeFilter
+    return matchesSearch && (categoryFilter === 'all' || s.category === categoryFilter)
   })
 
   const groups = {}
@@ -378,12 +382,6 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
     groups[s.category].push(s)
   }
   const categoryKeys = sortCategories(groups)
-  const allCategories = sortCategories(
-    standards.reduce((acc, s) => {
-      if (!acc[s.category]) acc[s.category] = []
-      return acc
-    }, {})
-  )
 
   return (
     <div className="space-y-10">
@@ -394,23 +392,23 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="space-y-2">
         <input
           type="search"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search reference material…"
-          className="flex-1 bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors"
+          className="w-full bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors"
         />
         <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors text-gray-300 cursor-pointer"
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+          className="w-full bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors text-gray-300 cursor-pointer"
         >
-          <option value="all">All Types</option>
-          <option value="Scientific Standard">Scientific Standard</option>
-          <option value="BOH Manual">BOH Manual</option>
-          <option value="Field Note">Field Note</option>
+          <option value="all">All Categories</option>
+          {allCategories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
         </select>
       </div>
 
