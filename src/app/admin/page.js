@@ -220,6 +220,23 @@ export default async function AdminPage() {
       {/* Invite user */}
       <InviteSection />
 
+      {/* Reference import */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Reference Library</h2>
+        <div className="bg-[#161B22] border border-gray-800 rounded-lg px-4 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-200">Import Reference Material</p>
+            <p className="text-xs text-gray-500 mt-0.5">Upload PDFs, photos, or web links to add to the kitchen reference guide.</p>
+          </div>
+          <a
+            href="/admin/reference-import"
+            className="flex-shrink-0 ml-4 px-4 py-2 bg-[#D35400] hover:bg-[#E67E22] text-white text-xs font-bold rounded transition-colors"
+          >
+            Import →
+          </a>
+        </div>
+      </section>
+
       {/* User management */}
       <UsersSection />
 

@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 
 const TABS = [
+  { id: 'url',   label: 'Web Link' },
   { id: 'pdf',   label: 'PDF Document' },
   { id: 'image', label: 'Photo/Scan' },
 ]
@@ -52,6 +53,54 @@ function StatusBox({ status, error, result }) {
     </div>
   )
   return null
+}
+
+function UrlTab() {
+  const [url, setUrl] = useState('')
+  const [status, setStatus] = useState('idle')
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!url.trim()) return
+    setStatus('processing'); setError(null); setResult(null)
+    try {
+      const res = await fetch('/api/import-reference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Import failed')
+      setResult(data); setStatus('done'); setUrl('')
+    } catch (err) {
+      setError(err.message); setStatus('idle')
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-gray-400">Paste a URL to a culinary article, food science paper, or technique guide.</p>
+      <input
+        type="url"
+        value={url}
+        onChange={e => { setUrl(e.target.value); setResult(null); setError(null) }}
+        placeholder="https://example.com/culinary-reference…"
+        autoCapitalize="none"
+        autoCorrect="off"
+        className="w-full bg-[#161B22] border border-gray-700 rounded px-4 py-3 text-base focus:outline-none focus:border-[#D35400] transition-colors"
+      />
+      <button
+        type="submit"
+        disabled={status === 'processing' || !url.trim()}
+        className="w-full bg-[#D35400] hover:bg-[#E67E22] active:bg-[#C0392B] disabled:opacity-40 text-white font-bold py-3 rounded transition-colors text-sm"
+      >
+        {status === 'processing' ? 'Processing…' : 'IMPORT REFERENCE'}
+      </button>
+      <StatusBox status={status} error={error} result={result} />
+    </form>
+  )
 }
 
 function FileTab({ type, accept, hint }) {
@@ -106,7 +155,7 @@ function FileTab({ type, accept, hint }) {
 }
 
 export default function ReferenceImportClient() {
-  const [tab, setTab] = useState('pdf')
+  const [tab, setTab] = useState('url')
 
   return (
     <div className="max-w-xl mx-auto">
@@ -132,7 +181,8 @@ export default function ReferenceImportClient() {
         ))}
       </div>
 
-      {tab === 'pdf' && (
+      {tab === 'url'   && <UrlTab />}
+      {tab === 'pdf'   && (
         <FileTab
           type="pdf"
           accept=".pdf,application/pdf"

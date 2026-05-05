@@ -43,7 +43,32 @@ export async function POST(request) {
   let result
 
   try {
-    if (contentType.includes('multipart/form-data')) {
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const url = body.url
+      if (!url) return Response.json({ error: 'URL is required' }, { status: 400 })
+
+      const pageResp = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
+        signal: AbortSignal.timeout(20_000),
+      })
+      if (!pageResp.ok) throw new Error(`Could not access URL (${pageResp.status}). Try a different source.`)
+
+      const html = await pageResp.text()
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .slice(0, 24000)
+
+      result = await extractReference([
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: `Extract and structure this culinary reference content from a web page:\n\n${text}` },
+      ], openai)
+
+    } else if (contentType.includes('multipart/form-data')) {
       const form = await request.formData()
       const file = form.get('file')
       if (!file) return Response.json({ error: 'File is required' }, { status: 400 })
