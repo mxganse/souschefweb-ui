@@ -24,8 +24,10 @@ RULES:
 - CATEGORIZATION: Choose the most appropriate category from the provided list.
 - TAGS: Identify ALL relevant topics/ingredients/techniques (e.g., ["sous-vide", "meat", "chemistry"]).`
 
+const clean = s => (s || '').replace(/^﻿/, '').trim()
+
 async function getSupabase() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  return createClient(clean(process.env.NEXT_PUBLIC_SUPABASE_URL), clean(process.env.SUPABASE_SERVICE_KEY))
 }
 
 async function extractReference(messages, openai) {
