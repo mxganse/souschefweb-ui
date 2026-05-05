@@ -38,7 +38,7 @@ function getContentFingerprint(markdown) {
 
 export async function POST(request) {
   try {
-    const { markdown, sourceType, sourceUrl = null, creator = null, force = false, recipeType = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
+    const { markdown, sourceType, sourceUrl = null, creator = null, source_brand = null, force = false, recipeType = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
     const { title, ingredients } = parseMarkdown(markdown)
@@ -99,6 +99,7 @@ export async function POST(request) {
         category: creator || null,
         source_type: sourceType,
         source_url: sourceUrl,
+        source_brand: source_brand || null,
         instructions_markdown: markdown,
         user_id: user.id,
         submitted_by: submittedBy,

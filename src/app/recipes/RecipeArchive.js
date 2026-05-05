@@ -6,6 +6,16 @@ import CategoryFilter from './CategoryFilter'
 
 const ITEMS_PER_PAGE = 20
 
+const BADGE_STYLES = {
+  'Serious Eats': { badge: 'bg-orange-100 text-orange-800 border border-orange-200', icon: '🍳' },
+  'AllRecipes': { badge: 'bg-amber-100 text-amber-800 border border-amber-200', icon: '👨‍🍳' },
+  'NYT Cooking': { badge: 'bg-gray-100 text-gray-900 border border-gray-300', icon: '📰' },
+  'Bon Appétit': { badge: 'bg-blue-100 text-blue-800 border border-blue-200', icon: '✨' },
+  'Epicurious': { badge: 'bg-blue-100 text-blue-800 border border-blue-200', icon: '✨' },
+  'Instagram': { badge: 'bg-purple-100 text-purple-800 border border-purple-200', icon: '📸' },
+  'Unknown': { badge: 'bg-gray-100 text-gray-600 border border-gray-300', icon: '📋' },
+}
+
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -15,6 +25,16 @@ function SourceIcon({ type }) {
   const meta = SOURCE_META[type]
   if (!meta) return <span className="text-base">📋</span>
   return <span className="text-base" title={meta.label}>{meta.icon}</span>
+}
+
+function SourceBadge({ sourceBrand }) {
+  if (!sourceBrand) return null
+  const styles = BADGE_STYLES[sourceBrand] || BADGE_STYLES['Unknown']
+  return (
+    <span className={`absolute top-3 right-3 text-xs font-semibold px-2 py-1 rounded z-10 ${styles.badge}`}>
+      {styles.icon} {sourceBrand}
+    </span>
+  )
 }
 
 function CategoryBadges({ recipe }) {
@@ -187,7 +207,8 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
   }
 
   return (
-    <details ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group">
+    <details ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded group relative">
+      <SourceBadge sourceBrand={recipe.source_brand} />
       <summary className="flex items-start gap-3 p-4 cursor-pointer list-none select-none active:bg-[#1c2230] hover:bg-[#1c2230] transition-colors">
         <SourceIcon type={recipe.source_type} />
         {recipe.recipe_type === 'beverage' && <span className="text-xs">🍹</span>}

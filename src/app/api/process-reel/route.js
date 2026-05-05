@@ -30,15 +30,27 @@ export async function POST(request) {
       return Response.json({ error: err.error || 'Worker error' }, { status: 500 })
     }
 
-    const { title, recipe: markdown, creator } = await resp.json()
+    const { title, recipe: markdown, creator, source_brand } = await resp.json()
+
+    // Map source_brand to sourceType for backwards compatibility
+    const sourceTypeMap = {
+      'Instagram': 'Instagram Extract',
+      'Serious Eats': 'Web Import',
+      'AllRecipes': 'Web Import',
+      'NYT Cooking': 'Web Import',
+      'Bon Appétit': 'Web Import',
+      'Epicurious': 'Web Import',
+    }
+    const sourceType = sourceTypeMap[source_brand] || 'Web Import'
 
     // Return extracted content — no DB write yet (user reviews first)
     return Response.json({
       markdown,
       title,
-      sourceType: 'Instagram Extract',
+      sourceType,
       sourceUrl: cleanUrl,
       creator: creator && creator !== 'Unknown' ? creator : null,
+      source_brand,
     })
 
   } catch (err) {

@@ -32,10 +32,31 @@ const CATEGORY_ORDER = [
   'Hydrocolloids',
 ]
 
+const REFERENCE_BADGE_STYLES = {
+  'Scientific Standard': { badge: 'bg-indigo-100 text-indigo-800 border border-indigo-200', icon: '🧪' },
+  'BOH Manual': { badge: 'bg-green-100 text-green-800 border border-green-200', icon: '📖' },
+  'Field Note': { badge: 'bg-yellow-100 text-yellow-800 border border-yellow-200', icon: '📝' },
+}
+
+function inferReferenceType(category) {
+  if (category === 'BOH Basics') return 'BOH Manual'
+  if (/^Proteins|Vegetables|Starches|Sugars|Fats/.test(category)) return 'Scientific Standard'
+  return 'Field Note'
+}
+
 function sortCategories(groups) {
   const known = CATEGORY_ORDER.filter(c => groups[c])
   const extra = Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c)).sort()
   return [...known, ...extra]
+}
+
+function ReferenceBadge({ referenceType }) {
+  const styles = REFERENCE_BADGE_STYLES[referenceType] || REFERENCE_BADGE_STYLES['Field Note']
+  return (
+    <span className={`absolute top-3 right-3 text-xs font-semibold px-2 py-1 rounded z-10 ${styles.badge}`}>
+      {styles.icon} {referenceType}
+    </span>
+  )
 }
 
 // ── Markdown parser ───────────────────────────────────────────────────────────
@@ -276,8 +297,11 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete }) {
     else setDeleting(false)
   }
 
+  const referenceType = inferReferenceType(standard.category)
+
   return (
-    <details id={`ref-${standard.id}`} ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded-lg group">
+    <details id={`ref-${standard.id}`} ref={detailsRef} className="bg-[#161B22] border border-gray-800 rounded-lg group relative">
+      <ReferenceBadge referenceType={referenceType} />
       <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-[#1c2230] active:bg-[#1c2230] transition-colors rounded-lg">
         <span className="flex-1 text-sm font-bold text-gray-200">{standard.title}</span>
         <span className="text-gray-600 text-xs flex-shrink-0 group-open:rotate-90 transition-transform duration-150">▶</span>

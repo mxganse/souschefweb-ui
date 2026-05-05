@@ -58,6 +58,17 @@ function extractJsonLdRecipe(html) {
   return null
 }
 
+function detectSourceBrand(url) {
+  if (!url) return null
+  const hostname = new URL(url).hostname.toLowerCase()
+  if (hostname.includes('seriouseats.com')) return 'Serious Eats'
+  if (hostname.includes('allrecipes.com')) return 'AllRecipes'
+  if (hostname.includes('nytimes.com')) return 'NYT Cooking'
+  if (hostname.includes('bonappetit.com')) return 'Bon Appétit'
+  if (hostname.includes('epicurious.com')) return 'Epicurious'
+  return null
+}
+
 // ── Handler — extract only, no DB write ───────────────────────────────────────
 export async function POST(request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -175,10 +186,13 @@ export async function POST(request) {
     }
 
     const sourceTypeMap = { url: 'Web Import', text: 'Text Import', pdf: 'PDF Import', image: 'Image Import' }
+    const sourceBrand = type === 'url' ? detectSourceBrand(sourceUrl) : null
+
     return Response.json({
       markdown: result.markdown || '',
       sourceType: sourceTypeMap[type] || 'Import',
       sourceUrl: sourceUrl || null,
+      source_brand: sourceBrand,
       meal_types: result.meal_types || [],
       dietary_flags: result.dietary_flags || [],
       cooking_styles: result.cooking_styles || [],
