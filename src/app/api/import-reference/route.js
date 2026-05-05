@@ -29,9 +29,12 @@ async function extractReference(messages, openai) {
     response_format: { type: 'json_object' },
   })
   const raw = resp.choices[0].message.content.trim()
+  console.log('AI Response Raw:', raw)
   try {
-    return JSON.parse(raw)
-  } catch {
+    const cleaned = raw.replace(/^```json\n/, '').replace(/\n```$/, '')
+    return JSON.parse(cleaned)
+  } catch (e) {
+    console.error('JSON Parse Error:', e)
     return { markdown: raw, category: 'Other', tags: [], confidence: 0 }
   }
 }
