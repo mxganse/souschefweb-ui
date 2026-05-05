@@ -692,6 +692,49 @@ export function formatIngredient(parsed, scaleFactor, targetUnitSystem) {
 }
 
 // ---------------------------------------------------------------------------
+// formatDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Format an ISO 8601 date string to a human-readable date.
+ *
+ * @param {string} isoString - ISO 8601 date string (e.g., '2026-01-15T10:30:00Z')
+ * @param {object} options - Optional formatting options
+ * @param {string} options.format - 'short' (default: "Jan 15, 2026"), 'long', or 'time'
+ * @param {string} options.locale - Locale for formatting (default: 'en-US')
+ * @param {string} options.nullFallback - String to return if isoString is empty/null (default: '')
+ * @returns {string}
+ */
+export function formatDate(isoString, options = {}) {
+  const { format = 'short', locale = 'en-US', nullFallback = '' } = options
+
+  if (!isoString) return nullFallback
+
+  try {
+    const date = new Date(isoString)
+
+    if (format === 'time') {
+      return date.toLocaleDateString(locale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+
+    // Default 'short' format: "Jan 15, 2026"
+    return date.toLocaleDateString(locale, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  } catch {
+    return nullFallback
+  }
+}
+
+// ---------------------------------------------------------------------------
 // buildScaledMarkdown
 // ---------------------------------------------------------------------------
 

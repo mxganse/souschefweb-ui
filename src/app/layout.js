@@ -41,6 +41,9 @@ export default async function RootLayout({ children }) {
                   Admin
                 </a>
               )}
+              <a href="/reference" className="text-xs font-bold text-gray-600 hover:text-gray-300 transition-colors tracking-widest uppercase py-1">
+                Reference
+              </a>
               <div className="ml-auto flex items-center gap-4">
                 <span className="text-xs text-gray-700 hidden sm:block">
                   {user.user_metadata?.full_name || user.email}

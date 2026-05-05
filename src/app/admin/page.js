@@ -2,6 +2,7 @@ import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { isAdminUser } from '@/lib/auth'
 import { SOURCE_META } from '@/lib/sourceMeta'
+import { formatDate } from '@/lib/ingredients'
 import InviteSection from './InviteSection'
 import UsersSection from './UsersSection'
 
@@ -62,7 +63,7 @@ export default async function AdminPage() {
   const [recipesRes, ingredientCountRes, workerPingRes, featureEventsRes] = await Promise.allSettled([
     supabase
       .from('recipes')
-      .select('id, title, source_type, created_at')
+      .select('id, title, source_type, created_at, submitted_by')
       .order('created_at', { ascending: false }),
     supabase
       .from('ingredients')
@@ -311,13 +312,24 @@ export default async function AdminPage() {
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Recent Imports</h2>
           <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
             {recent.map(r => (
-              <div key={r.id} className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors">
-                <span className="text-base flex-shrink-0">{SOURCE_META[r.source_type]?.icon || '📋'}</span>
-                <span className="flex-1 text-sm text-gray-300 truncate">{r.title}</span>
-                <span className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
-                  {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
+              <a
+                key={r.id}
+                href={`/?recipe=${r.id}`}
+                aria-label={`View recipe: ${r.title}`}
+                className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors"
+              >
+                <span className="text-base flex-shrink-0" aria-hidden="true">{SOURCE_META[r.source_type]?.icon || '📋'}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-gray-300 truncate block">{r.title}</span>
+                  {r.submitted_by && <span className="text-xs text-gray-500 truncate block">by {r.submitted_by}</span>}
+                </div>
+                <time
+                  dateTime={r.created_at}
+                  className="text-xs text-gray-600 flex-shrink-0 tabular-nums"
+                >
+                  {formatDate(r.created_at)}
+                </time>
+              </a>
             ))}
           </div>
           {total > 15 && (
