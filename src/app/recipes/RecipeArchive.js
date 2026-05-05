@@ -6,16 +6,6 @@ import CategoryFilter from './CategoryFilter'
 
 const ITEMS_PER_PAGE = 20
 
-const SOURCE_FILTERS = [
-  { id: 'all',                 label: 'All' },
-  { id: 'Instagram Extract',   label: '📸 Instagram' },
-  { id: 'Web Import',          label: '🌐 Web' },
-  { id: 'PDF Import',          label: '📄 PDF' },
-  { id: 'Image Import',        label: '📷 Photo' },
-  { id: 'Text Import',         label: '📝 Text' },
-  { id: 'beverage',            label: '🍹 Beverage' },
-]
-
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -534,24 +524,12 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
         </select>
       </div>
 
-      <CategoryFilter filters={catFilters} onChange={v => { setCatFilters(v); setPage(1) }} />
-
-      {/* Source filter chips */}
-      <div className="flex flex-wrap gap-1.5 mb-5">
-        {SOURCE_FILTERS.map(f => (
-          <button
-            key={f.id}
-            onClick={() => handleSource(f.id)}
-            className={`px-3 py-1 text-xs font-bold rounded-full border transition-colors ${
-              sourceFilter === f.id
-                ? 'bg-[#D35400] border-[#D35400] text-white'
-                : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <CategoryFilter
+        filters={catFilters}
+        onChange={v => { setCatFilters(v); setPage(1) }}
+        sourceFilter={sourceFilter}
+        onSourceChange={v => { handleSource(v) }}
+      />
 
       {/* Results count when filtered */}
       {(search || sourceFilter !== 'all' || catFilters.mealTypes.length > 0 || catFilters.dietaryFlags.length > 0 || catFilters.cookingStyles.length > 0) && (
