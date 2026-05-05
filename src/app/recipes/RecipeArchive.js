@@ -459,6 +459,15 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   const [page, setPage]                 = useState(1)
   const [catFilters, setCatFilters] = useState({ mealTypes: [], dietaryFlags: [], cookingStyles: [] })
 
+  // DEBUG: Log data structure
+  useEffect(() => {
+    console.log('[RecipeArchive] initialRecipes sample:', initialRecipes?.[0], {
+      meal_types: initialRecipes?.[0]?.meal_types,
+      dietary_flags: initialRecipes?.[0]?.dietary_flags,
+      cooking_styles: initialRecipes?.[0]?.cooking_styles,
+    })
+  }, [])
+
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
 
@@ -473,6 +482,19 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   function handleUpdate(id, patches) {
     setRecipes(prev => prev.map(r => r.id === id ? { ...r, ...patches } : r))
   }
+
+  // DEBUG: Log filter state
+  useEffect(() => {
+    if (catFilters.mealTypes.length > 0 || catFilters.dietaryFlags.length > 0 || catFilters.cookingStyles.length > 0) {
+      console.log('[RecipeArchive] Active filters:', catFilters, 'Total recipes:', recipes.length)
+      const sample = recipes.slice(0, 1)[0]
+      console.log('[RecipeArchive] Sample recipe structure:', {
+        meal_types: sample?.meal_types,
+        dietary_flags: sample?.dietary_flags,
+        cooking_styles: sample?.cooking_styles,
+      })
+    }
+  }, [catFilters, recipes.length])
 
   const filtered = recipes
     .filter(r => {
