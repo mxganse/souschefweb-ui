@@ -60,7 +60,7 @@ export default async function AdminPage() {
   const workerPingUrl = workerBaseUrl ? `${workerBaseUrl.replace(/\/$/, '')}/health` : null
 
   const t0 = Date.now()
-  const [recipesRes, ingredientCountRes, workerPingRes, featureEventsRes] = await Promise.allSettled([
+  const [recipesRes, ingredientCountRes, workerPingRes, featureEventsRes, referenceRes] = await Promise.allSettled([
     supabase
       .from('recipes')
       .select('id, title, source_type, created_at, submitted_by')
@@ -75,12 +75,18 @@ export default async function AdminPage() {
       .from('feature_events')
       .select('event_name, created_at')
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+    supabase
+      .from('culinary_standards')
+      .select('id, title, category, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
   const dbLatency = Date.now() - t0
 
-  const recipes       = recipesRes.status === 'fulfilled' ? (recipesRes.value.data ?? []) : []
+  const recipes         = recipesRes.status === 'fulfilled' ? (recipesRes.value.data ?? []) : []
   const ingredientCount = ingredientCountRes.status === 'fulfilled' ? (ingredientCountRes.value.count ?? 0) : 0
-  const featureEvents = featureEventsRes.status === 'fulfilled' ? (featureEventsRes.value.data ?? []) : []
+  const featureEvents   = featureEventsRes.status === 'fulfilled' ? (featureEventsRes.value.data ?? []) : []
+  const recentReference = referenceRes.status === 'fulfilled' ? (referenceRes.value.data ?? []) : []
 
   // ── Connectivity status ───────────────────────────────────────────────────
   // Supabase
@@ -155,7 +161,7 @@ export default async function AdminPage() {
   lastWeek.setDate(lastWeek.getDate() - 7)
   const lastWeekCount = recipes.filter(r => new Date(r.created_at) >= lastWeek).length
 
-  const recent = recipes.slice(0, 15)
+  const recent = recipes.slice(0, 5)
 
   // ── Feature usage ─────────────────────────────────────────────────────────
   const EVENT_LABELS = {
@@ -307,35 +313,65 @@ export default async function AdminPage() {
       </section>
 
       {/* Recent imports */}
-      {recent.length > 0 && (
+      {(recent.length > 0 || recentReference.length > 0) && (
         <section>
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Recent Imports</h2>
-          <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
-            {recent.map(r => (
-              <a
-                key={r.id}
-                href={`/?recipe=${r.id}`}
-                aria-label={`View recipe: ${r.title}`}
-                className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors"
-              >
-                <span className="text-base flex-shrink-0" aria-hidden="true">{SOURCE_META[r.source_type]?.icon || '📋'}</span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-gray-300 truncate block">{r.title}</span>
-                  {r.submitted_by && <span className="text-xs text-gray-500 truncate block">by {r.submitted_by}</span>}
-                </div>
-                <time
-                  dateTime={r.created_at}
-                  className="text-xs text-gray-600 flex-shrink-0 tabular-nums"
+
+          {/* Recipe imports */}
+          {recent.length > 0 && (
+            <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800 mb-4">
+              <div className="px-4 py-2 bg-[#0E1117]">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Recipes</span>
+              </div>
+              {recent.map(r => (
+                <a
+                  key={r.id}
+                  href={`/?recipe=${r.id}`}
+                  aria-label={`View recipe: ${r.title}`}
+                  className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors"
                 >
-                  {formatDate(r.created_at)}
-                </time>
-              </a>
-            ))}
-          </div>
-          {total > 15 && (
-            <p className="text-xs text-gray-600 mt-2 text-center">
-              Showing 15 of {total.toLocaleString()} — <a href="/" className="text-[#D35400] hover:text-[#E67E22] underline">view all in Archive</a>
+                  <span className="text-base flex-shrink-0" aria-hidden="true">{SOURCE_META[r.source_type]?.icon || '📋'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-300 truncate block">{r.title}</span>
+                    {r.submitted_by && <span className="text-xs text-gray-500 truncate block">by {r.submitted_by}</span>}
+                  </div>
+                  <time dateTime={r.created_at} className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
+                    {formatDate(r.created_at)}
+                  </time>
+                </a>
+              ))}
+            </div>
+          )}
+          {total > 5 && (
+            <p className="text-xs text-gray-600 mb-4 text-center">
+              Showing 5 of {total.toLocaleString()} — <a href="/" className="text-[#D35400] hover:text-[#E67E22] underline">view all in Archive</a>
             </p>
+          )}
+
+          {/* Reference updates */}
+          {recentReference.length > 0 && (
+            <div className="border border-gray-800 rounded-lg overflow-hidden divide-y divide-gray-800">
+              <div className="px-4 py-2 bg-[#0E1117]">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Reference</span>
+              </div>
+              {recentReference.map(s => (
+                <a
+                  key={s.id}
+                  href="/reference"
+                  aria-label={`View reference: ${s.title}`}
+                  className="flex items-center gap-3 px-4 py-3 bg-[#161B22] hover:bg-[#1c2230] transition-colors"
+                >
+                  <span className="text-base flex-shrink-0" aria-hidden="true">📚</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-300 truncate block">{s.title}</span>
+                    <span className="text-xs text-gray-500 truncate block">{s.category}</span>
+                  </div>
+                  <time dateTime={s.created_at} className="text-xs text-gray-600 flex-shrink-0 tabular-nums">
+                    {formatDate(s.created_at)}
+                  </time>
+                </a>
+              ))}
+            </div>
           )}
         </section>
       )}
