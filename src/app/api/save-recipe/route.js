@@ -38,7 +38,7 @@ function getContentFingerprint(markdown) {
 
 export async function POST(request) {
   try {
-    const { markdown, sourceType, sourceUrl = null, creator = null, force = false, recipeType = null } = await request.json()
+    const { markdown, sourceType, sourceUrl = null, creator = null, force = false, recipeType = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
     const { title, ingredients } = parseMarkdown(markdown)
@@ -103,6 +103,7 @@ export async function POST(request) {
         user_id: user.id,
         submitted_by: submittedBy,
         recipe_type: detectedType,
+        ...(meal_types.length > 0 && { ai_categorized_at: new Date().toISOString(), category_confidence }),
       })
       .select('id')
       .single()
@@ -114,6 +115,31 @@ export async function POST(request) {
         ingredients.map(raw_text => ({ recipe_id: recipe.id, raw_text }))
       )
     }
+
+    // Save category junction tables in parallel
+    const categoryInserts = []
+    if (meal_types.length > 0) {
+      categoryInserts.push(
+        supabase.from('recipe_meal_types').insert(
+          meal_types.map(meal_type => ({ recipe_id: recipe.id, meal_type }))
+        )
+      )
+    }
+    if (dietary_flags.length > 0) {
+      categoryInserts.push(
+        supabase.from('recipe_dietary_flags').insert(
+          dietary_flags.map(dietary_flag => ({ recipe_id: recipe.id, dietary_flag }))
+        )
+      )
+    }
+    if (cooking_styles.length > 0) {
+      categoryInserts.push(
+        supabase.from('recipe_cooking_styles').insert(
+          cooking_styles.map(cooking_style => ({ recipe_id: recipe.id, cooking_style }))
+        )
+      )
+    }
+    if (categoryInserts.length > 0) await Promise.all(categoryInserts)
 
     return Response.json({ id: recipe.id, title, ingredientCount: ingredients.length })
 

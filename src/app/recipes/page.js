@@ -7,11 +7,20 @@ export const dynamic = 'force-dynamic'
 export default async function RecipesPage() {
   const supabase = await createSessionClient()
 
-  const [{ data: { user } }, { data: recipes, error }] = await Promise.all([
+  const [
+    { data: { user } },
+    { data: recipes, error },
+    { data: mealTypes },
+    { data: dietaryFlags },
+    { data: cookingStyles },
+  ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.from('recipes')
       .select('id, title, category, source_type, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type')
       .order('created_at', { ascending: false }),
+    supabase.from('recipe_meal_types').select('recipe_id, meal_type, is_admin_override, original_ai_value'),
+    supabase.from('recipe_dietary_flags').select('recipe_id, dietary_flag, is_admin_override, original_ai_value'),
+    supabase.from('recipe_cooking_styles').select('recipe_id, cooking_style'),
   ])
 
   if (error) {
@@ -22,13 +31,42 @@ export default async function RecipesPage() {
     )
   }
 
-  const isAdmin = isAdminUser(user)
+  // Build lookup maps for O(1) joins
+  const mealTypeMap = {}
+  for (const row of mealTypes ?? []) {
+    if (!mealTypeMap[row.recipe_id]) mealTypeMap[row.recipe_id] = { values: [], overrides: {} }
+    mealTypeMap[row.recipe_id].values.push(row.meal_type)
+    if (row.is_admin_override && row.original_ai_value) {
+      mealTypeMap[row.recipe_id].overrides[row.meal_type] = row.original_ai_value
+    }
+  }
+
+  const dietaryMap = {}
+  for (const row of dietaryFlags ?? []) {
+    if (!dietaryMap[row.recipe_id]) dietaryMap[row.recipe_id] = []
+    dietaryMap[row.recipe_id].push(row.dietary_flag)
+  }
+
+  const cookingMap = {}
+  for (const row of cookingStyles ?? []) {
+    if (!cookingMap[row.recipe_id]) cookingMap[row.recipe_id] = []
+    cookingMap[row.recipe_id].push(row.cooking_style)
+  }
+
+  // Merge categories into recipes
+  const enriched = (recipes ?? []).map(r => ({
+    ...r,
+    meal_types: mealTypeMap[r.id]?.values ?? [],
+    dietary_flags: dietaryMap[r.id] ?? [],
+    cooking_styles: cookingMap[r.id] ?? [],
+    category_overrides: mealTypeMap[r.id]?.overrides ?? {},
+  }))
 
   return (
     <RecipeArchive
-      initialRecipes={recipes ?? []}
+      initialRecipes={enriched}
       currentUserId={user?.id ?? null}
-      isAdmin={isAdmin}
+      isAdmin={isAdminUser(user)}
     />
   )
 }

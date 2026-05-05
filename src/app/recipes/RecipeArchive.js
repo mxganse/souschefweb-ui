@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { SOURCE_META } from '@/lib/sourceMeta'
 import ScalingPanel from './ScalingPanel'
+import CategoryFilter from './CategoryFilter'
 
 const ITEMS_PER_PAGE = 20
 
@@ -24,6 +25,49 @@ function SourceIcon({ type }) {
   const meta = SOURCE_META[type]
   if (!meta) return <span className="text-base">📋</span>
   return <span className="text-base" title={meta.label}>{meta.icon}</span>
+}
+
+function CategoryBadges({ recipe }) {
+  const mealTypes = recipe.meal_types || []
+  const dietaryFlags = recipe.dietary_flags || []
+  const cookingStyles = recipe.cooking_styles || []
+  const overrides = recipe.category_overrides || {}
+
+  if (!mealTypes.length && !dietaryFlags.length && !cookingStyles.length) return null
+
+  function renderBadge(value, originalAiValue) {
+    const hasOverride = originalAiValue && originalAiValue !== value
+    return (
+      <span key={value} className="inline-flex items-center gap-0.5">
+        <span className="text-gray-300">{value}</span>
+        {hasOverride && (
+          <span className="text-gray-600 text-[10px]">(was: {originalAiValue})</span>
+        )}
+      </span>
+    )
+  }
+
+  const visibleDietary = dietaryFlags.filter(f => f !== 'omnivore')
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+      {mealTypes.length > 0 && (
+        <span className="text-[11px] text-gray-500">
+          🍽 {mealTypes.map(v => renderBadge(v, overrides[v]))}
+        </span>
+      )}
+      {visibleDietary.length > 0 && (
+        <span className="text-[11px] text-gray-500">
+          · {visibleDietary.map((v, i) => [i > 0 ? ', ' : null, renderBadge(v, overrides[v])])}
+        </span>
+      )}
+      {cookingStyles.length > 0 && (
+        <span className="text-[11px] text-gray-500">
+          · {cookingStyles.join(', ')}
+        </span>
+      )}
+    </div>
+  )
 }
 
 function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
@@ -164,6 +208,7 @@ function RecipeCard({ recipe, onDelete, onUpdate, currentUserId, isAdmin }) {
             {category && category !== 'Unknown' ? ` · @${category}` : ''}
             {recipe.submitted_by ? ` · submitted by ${recipe.submitted_by}` : ''}
           </p>
+          <CategoryBadges recipe={recipe} />
         </div>
         <span className="text-gray-600 text-xs mt-0.5 group-open:rotate-90 transition-transform">▶</span>
       </summary>
@@ -412,6 +457,7 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   const [sort, setSort]                 = useState('newest')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [page, setPage]                 = useState(1)
+  const [catFilters, setCatFilters] = useState({ mealTypes: [], dietaryFlags: [], cookingStyles: [] })
 
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
@@ -430,11 +476,17 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
 
   const filtered = recipes
     .filter(r => {
+      // Source filter
       if (sourceFilter === 'beverage') {
         if (r.recipe_type !== 'beverage') return false
       } else if (sourceFilter === 'Instagram Extract') {
         if (!['Instagram Extract', 'Instagram Extraction'].includes(r.source_type)) return false
       } else if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false
+      // Category filters
+      if (catFilters.mealTypes.length > 0 && !catFilters.mealTypes.some(m => (r.meal_types || []).includes(m))) return false
+      if (catFilters.dietaryFlags.length > 0 && !catFilters.dietaryFlags.some(d => (r.dietary_flags || []).includes(d))) return false
+      if (catFilters.cookingStyles.length > 0 && !catFilters.cookingStyles.some(c => (r.cooking_styles || []).includes(c))) return false
+      // Search
       if (!search) return true
       const q = search.toLowerCase()
       return (
@@ -479,6 +531,8 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
           <option value="title">Title A–Z</option>
         </select>
       </div>
+
+      <CategoryFilter filters={catFilters} onChange={v => { setCatFilters(v); setPage(1) }} />
 
       {/* Source filter chips */}
       <div className="flex flex-wrap gap-1.5 mb-5">

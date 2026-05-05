@@ -2,62 +2,44 @@ import OpenAI from 'openai'
 
 export const maxDuration = 120
 
-const SYSTEM_PROMPT = `You are an expert culinary editor. The user will provide recipe content from various sources (web pages, PDFs, images, pasted text). Extract and structure the recipe in clean markdown.
+const SYSTEM_PROMPT = `You are an expert culinary editor and recipe categorizer. Extract and structure the recipe in clean markdown, then categorize it.
 
-Output format — use EXACTLY these sections when present:
-# [Dish Title]
+OUTPUT FORMAT: Return ONLY valid JSON with this exact structure:
+{
+  "markdown": "# [Dish Title]\\n\\n## Overview\\n- **Yield:** [amount]\\n- **Prep Time:** [time]\\n- **Cook Time:** [time]\\n- **Cuisine:** [type]\\n\\n## Ingredients\\n- [quantity] [unit] [ingredient, with prep note]\\n\\n## Method\\n[Numbered steps. Include temperatures in °F and °C, timing, visual/textural cues.]\\n\\n## Chef's Notes\\n[Substitutions, make-ahead tips, storage, food science where relevant.]",
+  "meal_types": ["dinner"],
+  "dietary_flags": ["omnivore"],
+  "cooking_styles": ["roasting"],
+  "confidence": 0.95
+}
 
-## Overview
-- **Yield:** [amount]
-- **Prep Time:** [time]
-- **Cook Time:** [time]
-- **Cuisine:** [type]
-
-## Ingredients
-- [quantity] [unit] [ingredient, with prep note]
-
-## Method
-[Numbered steps. Include temperatures in °F and °C, timing, visual/textural cues.]
-
-## Chef's Notes
-[Substitutions, make-ahead tips, storage, food science where relevant.]
-
-Rules:
+MARKDOWN RULES:
+- Use EXACTLY these sections when present: # [Dish Title], ## Overview, ## Ingredients, ## Method, ## Chef's Notes
 - If percentages appear (baker's percentages, brine concentrations, hydrocolloid ratios), include them in the Ingredients list.
 - Preserve all quantities exactly as written — never round or approximate.
 - If the source has multiple recipes, extract only the primary/main recipe.
-- Output ONLY the markdown, no preamble or commentary.`
 
-async function extractRecipeFromText(content, openai) {
+CATEGORIZATION RULES:
+- meal_types: ARRAY, can be multiple (e.g. ["breakfast","dessert"]). Choose from: breakfast, lunch, dinner, dessert, snack, appetizer, beverage, sauce/condiment
+- dietary_flags: ARRAY, include ALL applicable. Always include base flag (omnivore unless restricted). Choose from: omnivore, vegetarian, vegan, pescatarian, gluten-free, dairy-free, nut-free, kosher, halal, keto, paleo, whole30
+- cooking_styles: ARRAY, identify ALL methods used. Choose from: baking, grilling, braising, sous-vide, roasting, sautéing, raw/no-cook, frying, boiling, steaming, slow-cooking, smoking, curing, fermenting
+- confidence: 0.0-1.0, lower if ambiguous`
+
+async function extractRecipe(messages, openai) {
   const resp = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content },
-    ],
+    messages,
     temperature: 0.2,
     max_tokens: 4096,
+    response_format: { type: 'json_object' },
   })
-  return resp.choices[0].message.content.trim()
-}
-
-async function extractRecipeFromImage(base64, mimeType, openai) {
-  const resp = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: [
-          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } },
-          { type: 'text', text: 'Extract the recipe from this image.' },
-        ],
-      },
-    ],
-    temperature: 0.2,
-    max_tokens: 4096,
-  })
-  return resp.choices[0].message.content.trim()
+  const raw = resp.choices[0].message.content.trim()
+  try {
+    return JSON.parse(raw)
+  } catch {
+    // Fallback: treat as plain markdown if JSON parse fails
+    return { markdown: raw, meal_types: [], dietary_flags: [], cooking_styles: [], confidence: 0 }
+  }
 }
 
 function extractJsonLdRecipe(html) {
@@ -81,7 +63,7 @@ export async function POST(request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const contentType = request.headers.get('content-type') || ''
 
-  let type, markdown, sourceUrl
+  let type, result, sourceUrl
 
   try {
     if (contentType.includes('application/json')) {
@@ -104,30 +86,30 @@ export async function POST(request) {
         if (!pageResp.ok) throw new Error(`Could not fetch page: ${pageResp.status} ${pageResp.statusText}`)
 
         const html = await pageResp.text()
-
-        // Prefer JSON-LD structured recipe data when available (more accurate than stripped HTML)
         const jsonLdRecipe = extractJsonLdRecipe(html)
-        if (jsonLdRecipe) {
-          markdown = await extractRecipeFromText(
-            `Extract the recipe from this structured JSON-LD data:\n\n${JSON.stringify(jsonLdRecipe, null, 2).slice(0, 24000)}`,
-            openai
-          )
-        } else {
-          const text = html
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim()
-            .slice(0, 24000)
-          markdown = await extractRecipeFromText(`Extract the recipe from this web page content:\n\n${text}`, openai)
-        }
+        const userContent = jsonLdRecipe
+          ? `Extract the recipe from this structured JSON-LD data:\n\n${JSON.stringify(jsonLdRecipe, null, 2).slice(0, 24000)}`
+          : `Extract the recipe from this web page content:\n\n${html
+              .replace(/<script[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[\s\S]*?<\/style>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s{2,}/g, ' ')
+              .trim()
+              .slice(0, 24000)}`
+
+        result = await extractRecipe([
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userContent },
+        ], openai)
         sourceUrl = url
 
       } else if (type === 'text') {
         const text = body.text
         if (!text) return Response.json({ error: 'Text is required' }, { status: 400 })
-        markdown = await extractRecipeFromText(`Extract the recipe from this text:\n\n${text}`, openai)
+        result = await extractRecipe([
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Extract the recipe from this text:\n\n${text}` },
+        ], openai)
 
       } else {
         return Response.json({ error: 'Unknown type' }, { status: 400 })
@@ -145,7 +127,16 @@ export async function POST(request) {
 
       if (type === 'image') {
         if (!mime.startsWith('image/')) return Response.json({ error: 'File must be an image' }, { status: 400 })
-        markdown = await extractRecipeFromImage(base64, mime, openai)
+        result = await extractRecipe([
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}`, detail: 'high' } },
+              { type: 'text', text: 'Extract the recipe from this image.' },
+            ],
+          },
+        ], openai)
 
       } else if (type === 'pdf') {
         const fileBlob = new File([bytes], file.name || 'recipe.pdf', { type: 'application/pdf' })
@@ -166,9 +157,14 @@ export async function POST(request) {
           ],
           temperature: 0.2,
           max_tokens: 4096,
+          response_format: { type: 'json_object' },
         })
-        markdown = resp.choices[0].message.content.trim()
         await openai.files.del(fileId).catch(() => {})
+        try {
+          result = JSON.parse(resp.choices[0].message.content.trim())
+        } catch {
+          result = { markdown: resp.choices[0].message.content.trim(), meal_types: [], dietary_flags: [], cooking_styles: [], confidence: 0 }
+        }
 
       } else {
         return Response.json({ error: 'Unknown file type' }, { status: 400 })
@@ -179,7 +175,15 @@ export async function POST(request) {
     }
 
     const sourceTypeMap = { url: 'Web Import', text: 'Text Import', pdf: 'PDF Import', image: 'Image Import' }
-    return Response.json({ markdown, sourceType: sourceTypeMap[type] || 'Import', sourceUrl: sourceUrl || null })
+    return Response.json({
+      markdown: result.markdown || '',
+      sourceType: sourceTypeMap[type] || 'Import',
+      sourceUrl: sourceUrl || null,
+      meal_types: result.meal_types || [],
+      dietary_flags: result.dietary_flags || [],
+      cooking_styles: result.cooking_styles || [],
+      confidence: result.confidence ?? null,
+    })
 
   } catch (err) {
     console.error('import-recipe error:', err)
