@@ -14,7 +14,6 @@ const CATEGORY_ORDER = [
 
   // ── Technique & Craft ───────────────────────────────────────────────────
   'Thickening',
-  'Recipe Scaling',
   'Portioning',
   'Delta-T Cooking',
   'Sous-Vide',
@@ -357,7 +356,11 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
     setStandards(prev => prev.filter(s => s.id !== id))
   }
 
-  const normalizeCategory = (cat) => cat.startsWith('Proteins') ? 'Proteins' : cat
+  const normalizeCategory = (cat) => {
+    if (cat.startsWith('Proteins')) return 'Proteins'
+    if (cat === 'Recipe Scaling' || cat === 'Measurements') return 'BOH Basics'
+    return cat
+  }
 
   const allCategories = sortCategories(
     standards.reduce((acc, s) => {
@@ -381,7 +384,9 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
       s.category?.toLowerCase().includes(search.toLowerCase())
     )
     const matchesCategory = categoryFilter === 'all' ||
-      (categoryFilter === 'Proteins' ? s.category.startsWith('Proteins') : s.category === categoryFilter)
+      (categoryFilter === 'Proteins' ? s.category.startsWith('Proteins') :
+       categoryFilter === 'BOH Basics' ? (s.category === 'BOH Basics' || s.category === 'Recipe Scaling' || s.category === 'Measurements') :
+       s.category === categoryFilter)
     return matchesSearch && matchesCategory
   })
 
