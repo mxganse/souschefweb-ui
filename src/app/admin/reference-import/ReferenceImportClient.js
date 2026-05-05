@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { supabase } from '@/lib/supabase/client'
 
 const TABS = [
   { id: 'url',   label: 'Web Link' },
@@ -109,11 +110,7 @@ function FileTab({ type, accept, hint }) {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const inputRef = useRef()
-
-import { supabase } from '@/lib/supabase/client'
-
-// ... existing code ...
-
+  
   async function handleSubmit(e) {
     e.preventDefault()
     if (!file) return
