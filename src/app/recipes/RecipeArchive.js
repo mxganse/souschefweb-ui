@@ -53,7 +53,7 @@ function CategoryBadges({ recipe }) {
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
       {mealTypes.length > 0 && (
         <span className="text-[11px] text-gray-500">
-          🍽 {mealTypes.map(v => renderBadge(v, overrides[v]))}
+          🍽 {mealTypes.map((v, i) => [i > 0 ? ', ' : null, renderBadge(v, overrides[v])])}
         </span>
       )}
       {visibleDietary.length > 0 && (
