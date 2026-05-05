@@ -110,18 +110,36 @@ function FileTab({ type, accept, hint }) {
   const [result, setResult] = useState(null)
   const inputRef = useRef()
 
+import { supabase } from '@/lib/supabase/client'
+
+// ... existing code ...
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!file) return
     setStatus('processing'); setError(null); setResult(null)
     try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('type', type)
-      const res = await fetch('/api/import-reference', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Import failed')
-      setResult(data); setStatus('done'); setFile(null)
+      // 1. Upload to Supabase Storage
+      const fileName = `${Date.now()}-${file.name}`
+      const { data, error: uploadErr } = await supabase.storage
+        .from('temp-imports')
+        .upload(fileName, file)
+      
+      if (uploadErr) throw uploadErr
+      
+      // 2. Get public/signed URL
+      const { data: urlData } = supabase.storage.from('temp-imports').getPublicUrl(fileName)
+      
+      // 3. Send URL to API
+      const res = await fetch('/api/import-reference', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlData.publicUrl, fileName, isStorageFile: true })
+      })
+      
+      const dataResult = await res.json()
+      if (!res.ok) throw new Error(dataResult.error || 'Import failed')
+      setResult(dataResult); setStatus('done'); setFile(null)
       if (inputRef.current) inputRef.current.value = ''
     } catch (err) {
       setError(err.message); setStatus('idle')
