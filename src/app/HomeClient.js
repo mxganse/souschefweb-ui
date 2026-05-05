@@ -208,7 +208,7 @@ function UrlTab({ onSaved }) {
       formContent={({ disabled }) => (
         <>
           <input type="url" value={url} onChange={e => setUrl(e.target.value)}
-            placeholder="https://www.seriouseats.com/recipe/…"
+            placeholder="https://example.com/recipe/…"
             autoCapitalize="none" autoCorrect="off"
             className="w-full bg-[#161B22] border border-gray-700 rounded px-4 py-3 text-base focus:outline-none focus:border-[#D35400] transition-colors" />
           <button type="submit" disabled={disabled || !url.trim()}

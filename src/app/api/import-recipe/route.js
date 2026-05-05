@@ -94,7 +94,12 @@ export async function POST(request) {
           headers: fetchHeaders,
           signal: AbortSignal.timeout(20_000),
         })
-        if (!pageResp.ok) throw new Error(`Could not fetch page: ${pageResp.status} ${pageResp.statusText}`)
+        if (!pageResp.ok) {
+          if (pageResp.status === 402) throw new Error('This site requires a subscription or payment to access. Try a different recipe source.')
+          if (pageResp.status === 403) throw new Error('Access denied. This site may require login or block automated access.')
+          if (pageResp.status === 404) throw new Error('Recipe page not found. Check the URL and try again.')
+          throw new Error(`Could not access this URL. Please try a different recipe source.`)
+        }
 
         const html = await pageResp.text()
         const jsonLdRecipe = extractJsonLdRecipe(html)
