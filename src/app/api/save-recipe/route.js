@@ -1,16 +1,12 @@
 import { createSessionClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/auth'
 
-// Only alcohol/spirit-specific keywords to avoid false positives with food recipes
-const BEVERAGE_KEYWORDS = [
-  'jigger', 'cocktail', 'spirit',
-  'bourbon', 'gin', 'vodka', 'rum', 'whiskey', 'vermouth', 'bitters',
-  'liqueur', 'amaro', 'mezcal', 'tequila',
-]
+// Word-boundary regex to avoid substring false positives (gin→begin, rum→forum, etc.)
+const BEVERAGE_PATTERN = /\b(jigger|cocktail|bourbon|vodka|whiskey|vermouth|bitters|liqueur|amaro|mezcal|tequila)\b/i
 
 function detectBeverage(title, markdown) {
-  const hay = `${title} ${markdown}`.toLowerCase()
-  return BEVERAGE_KEYWORDS.some(kw => hay.includes(kw))
+  const hay = `${title} ${markdown}`
+  return BEVERAGE_PATTERN.test(hay)
 }
 
 function parseMarkdown(markdown) {
@@ -89,8 +85,12 @@ export async function POST(request) {
       }
     }
 
-    // ── Detect beverage type (prefer AI classification over keyword detection) ────
-    const detectedType = recipeType || (meal_types.includes('beverage') ? 'beverage' : (detectBeverage(title, markdown) ? 'beverage' : 'food'))
+    // ── Detect beverage type ───────────────────────────────────────────────────
+    // Priority: explicit override → AI meal_types → keyword fallback (only when AI gave no meal_types)
+    const detectedType = recipeType
+      || (meal_types.includes('beverage') ? 'beverage' : null)
+      || (meal_types.length === 0 && detectBeverage(title, markdown) ? 'beverage' : null)
+      || 'food'
 
     // ── Save ───────────────────────────────────────────────────────────────
     const { data: recipe, error: recipeError } = await supabase
