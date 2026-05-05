@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+﻿import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 120
