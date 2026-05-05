@@ -320,22 +320,12 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete }) {
 export default function ReferenceViewer({ initialData, isAdmin }) {
   const [standards, setStandards] = useState(initialData)
   const [search, setSearch]       = useState('')
-  const [adding, setAdding]       = useState(false)
-
   function handleUpdate(updated) {
     setStandards(prev => prev.map(s => s.id === updated.id ? updated : s))
   }
 
   function handleDelete(id) {
     setStandards(prev => prev.filter(s => s.id !== id))
-  }
-
-  function handleAdd(created) {
-    setStandards(prev => [...prev, created].sort((a, b) => {
-      if (a.category !== b.category) return a.category.localeCompare(b.category)
-      return a.sort_order - b.sort_order
-    }))
-    setAdding(false)
   }
 
   const filtered = standards.filter(s => {
@@ -362,22 +352,7 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
           <h1 className="text-2xl sm:text-3xl font-black text-[#D35400] tracking-tight">KITCHEN REFERENCE</h1>
           <p className="text-gray-500 text-sm mt-0.5">Standards for sanitation, cooking technique, and gastronomy.</p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => setAdding(a => !a)}
-            className="text-xs font-bold text-[#D35400] hover:text-[#E67E22] border border-[#D35400] hover:border-[#E67E22] px-3 py-1.5 rounded transition-colors"
-          >
-            {adding ? '✕ Cancel' : '+ Add Entry'}
-          </button>
-        )}
       </div>
-
-      {adding && (
-        <StandardForm
-          onSave={handleAdd}
-          onCancel={() => setAdding(false)}
-        />
-      )}
 
       <input
         type="search"
