@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const MEAL_TYPES = [
   { id: 'breakfast', label: '🌅 Breakfast' },
@@ -49,6 +49,11 @@ const chipInactive = 'border-gray-700 text-gray-400 hover:border-gray-500 hover:
 
 export default function CategoryFilter({ filters, onChange }) {
   const [showAllCooking, setShowAllCooking] = useState(false)
+
+  // DEBUG
+  useEffect(() => {
+    console.log('[CategoryFilter] Mounted with filters:', filters)
+  }, [])
 
   function toggleMealType(id) {
     const next = filters.mealTypes.includes(id)
