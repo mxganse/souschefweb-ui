@@ -7,5 +7,5 @@ const clean = s => (s || '').replace(/^﻿/, '').trim()
 
 export const supabase = createBrowserClient(
   clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-  clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || clean(process.env.SUPABASE_SERVICE_KEY)
 )
