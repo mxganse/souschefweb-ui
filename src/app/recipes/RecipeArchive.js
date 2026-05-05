@@ -38,12 +38,13 @@ function SourceBadge({ sourceBrand }) {
 }
 
 function CategoryBadges({ recipe }) {
+  const cuisine = recipe.cuisine
   const mealTypes = recipe.meal_types || []
   const dietaryFlags = recipe.dietary_flags || []
   const cookingStyles = recipe.cooking_styles || []
   const overrides = recipe.category_overrides || {}
 
-  if (!mealTypes.length && !dietaryFlags.length && !cookingStyles.length) return null
+  if (!cuisine && !mealTypes.length && !dietaryFlags.length && !cookingStyles.length) return null
 
   function renderBadge(value, originalAiValue) {
     const hasOverride = originalAiValue && originalAiValue !== value
@@ -61,9 +62,14 @@ function CategoryBadges({ recipe }) {
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+      {cuisine && (
+        <span className="text-[11px] text-gray-500">
+          🌍 {cuisine}
+        </span>
+      )}
       {mealTypes.length > 0 && (
         <span className="text-[11px] text-gray-500">
-          🍽 {mealTypes.map((v, i) => [i > 0 ? ', ' : null, renderBadge(v, overrides[v])])}
+          {cuisine ? '·' : ''} 🍽 {mealTypes.map((v, i) => [i > 0 ? ', ' : null, renderBadge(v, overrides[v])])}
         </span>
       )}
       {visibleDietary.length > 0 && (

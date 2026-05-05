@@ -35,7 +35,8 @@ function getContentFingerprint(markdown) {
 
 export async function POST(request) {
   try {
-    const { markdown, sourceType, sourceUrl = null, creator = null, source_brand = null, force = false, recipeType = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
+    const { markdown, sourceType, sourceUrl = null, creator = null, source_brand = null, force = false, recipeType = null, cuisine = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
+    console.log('[save-recipe] Received:', { cuisine, meal_types, dietary_flags, cooking_styles })
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
     const { title, ingredients } = parseMarkdown(markdown)
@@ -98,6 +99,7 @@ export async function POST(request) {
       .insert({
         title,
         category: creator || null,
+        cuisine: cuisine || null,
         source_type: sourceType,
         source_url: sourceUrl,
         source_brand: source_brand || null,
@@ -121,6 +123,7 @@ export async function POST(request) {
     // Save category junction tables in parallel
     const categoryInserts = []
     if (meal_types.length > 0) {
+      console.log(`[save-recipe] Inserting ${meal_types.length} meal_types for recipe ${recipe.id}:`, meal_types)
       categoryInserts.push(
         supabase.from('recipe_meal_types').insert(
           meal_types.map(meal_type => ({ recipe_id: recipe.id, meal_type }))
@@ -141,7 +144,15 @@ export async function POST(request) {
         )
       )
     }
-    if (categoryInserts.length > 0) await Promise.all(categoryInserts)
+    if (categoryInserts.length > 0) {
+      try {
+        await Promise.all(categoryInserts)
+        console.log('[save-recipe] Category inserts completed successfully')
+      } catch (catErr) {
+        console.error('[save-recipe] Category insert error:', catErr)
+        throw catErr
+      }
+    }
 
     return Response.json({ id: recipe.id, title, ingredientCount: ingredients.length })
 

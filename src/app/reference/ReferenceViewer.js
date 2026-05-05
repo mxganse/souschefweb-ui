@@ -6,10 +6,7 @@ const CATEGORY_ORDER = [
   'BOH Basics',
 
   // ── Core Ingredients & Fundamentals ─────────────────────────────────────
-  'Proteins - Meat',
-  'Proteins - Poultry',
-  'Proteins - Fish',
-  'Proteins - Eggs',
+  'Proteins',
   'Vegetables',
   'Starches',
   'Sugars',
@@ -360,7 +357,17 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
     setStandards(prev => prev.filter(s => s.id !== id))
   }
 
+  const normalizeCategory = (cat) => cat.startsWith('Proteins') ? 'Proteins' : cat
+
   const allCategories = sortCategories(
+    standards.reduce((acc, s) => {
+      const key = normalizeCategory(s.category)
+      if (!acc[key]) acc[key] = []
+      return acc
+    }, {})
+  )
+
+  const rawCategoryOptions = sortCategories(
     standards.reduce((acc, s) => {
       if (!acc[s.category]) acc[s.category] = []
       return acc
@@ -373,13 +380,16 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
       s.content_markdown?.toLowerCase().includes(search.toLowerCase()) ||
       s.category?.toLowerCase().includes(search.toLowerCase())
     )
-    return matchesSearch && (categoryFilter === 'all' || s.category === categoryFilter)
+    const matchesCategory = categoryFilter === 'all' ||
+      (categoryFilter === 'Proteins' ? s.category.startsWith('Proteins') : s.category === categoryFilter)
+    return matchesSearch && matchesCategory
   })
 
   const groups = {}
   for (const s of filtered) {
-    if (!groups[s.category]) groups[s.category] = []
-    groups[s.category].push(s)
+    const key = normalizeCategory(s.category)
+    if (!groups[key]) groups[key] = []
+    groups[key].push(s)
   }
   const categoryKeys = sortCategories(groups)
 
@@ -429,7 +439,7 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
                     key={s.id}
                     standard={s}
                     isAdmin={isAdmin}
-                    categoryOptions={allCategories}
+                    categoryOptions={rawCategoryOptions}
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                   />

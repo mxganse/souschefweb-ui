@@ -7,6 +7,7 @@ const SYSTEM_PROMPT = `You are an expert culinary editor and recipe categorizer.
 OUTPUT FORMAT: Return ONLY valid JSON with this exact structure:
 {
   "markdown": "# [Dish Title]\\n\\n## Overview\\n- **Yield:** [amount]\\n- **Prep Time:** [time]\\n- **Cook Time:** [time]\\n- **Cuisine:** [type]\\n\\n## Ingredients\\n- [quantity] [unit] [ingredient, with prep note]\\n\\n## Method\\n[Numbered steps. Include temperatures in °F and °C, timing, visual/textural cues.]\\n\\n## Chef's Notes\\n[Substitutions, make-ahead tips, storage, food science where relevant.]",
+  "cuisine": "Italian",
   "meal_types": ["dinner"],
   "dietary_flags": ["omnivore"],
   "cooking_styles": ["roasting"],
@@ -20,6 +21,7 @@ MARKDOWN RULES:
 - If the source has multiple recipes, extract only the primary/main recipe.
 
 CATEGORIZATION RULES:
+- cuisine: STRING, cuisine origin (e.g. "Italian", "Mexican", "Thai", "French", "Japanese", "Indian", "Mediterranean", etc.)
 - meal_types: ARRAY, can be multiple (e.g. ["breakfast","dessert"]). Choose from: breakfast, lunch, dinner, dessert, snack, appetizer, beverage, sauce/condiment
 - dietary_flags: ARRAY, include ALL applicable. Always include base flag (omnivore unless restricted). Choose from: omnivore, vegetarian, vegan, pescatarian, gluten-free, dairy-free, nut-free, kosher, halal, keto, paleo, whole30
 - cooking_styles: ARRAY, identify ALL methods used. Choose from: baking, grilling, braising, sous-vide, roasting, sautéing, raw/no-cook, frying, boiling, steaming, slow-cooking, smoking, curing, fermenting
@@ -38,7 +40,7 @@ async function extractRecipe(messages, openai) {
     return JSON.parse(raw)
   } catch {
     // Fallback: treat as plain markdown if JSON parse fails
-    return { markdown: raw, meal_types: [], dietary_flags: [], cooking_styles: [], confidence: 0 }
+    return { markdown: raw, cuisine: null, meal_types: [], dietary_flags: [], cooking_styles: [], confidence: 0 }
   }
 }
 
@@ -198,6 +200,7 @@ export async function POST(request) {
       sourceType: sourceTypeMap[type] || 'Import',
       sourceUrl: sourceUrl || null,
       source_brand: sourceBrand,
+      cuisine: result.cuisine || null,
       meal_types: result.meal_types || [],
       dietary_flags: result.dietary_flags || [],
       cooking_styles: result.cooking_styles || [],

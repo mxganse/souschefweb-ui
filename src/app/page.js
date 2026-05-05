@@ -18,7 +18,7 @@ export default async function HomePage() {
     supabase.auth.getUser(),
     supabase
       .from('recipes')
-      .select('id, title, category, source_type, source_brand, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type')
+      .select('id, title, category, cuisine, source_type, source_brand, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type')
       .order('created_at', { ascending: false }),
     supabase.from('recipe_meal_types').select('recipe_id, meal_type, is_admin_override, original_ai_value'),
     supabase.from('recipe_dietary_flags').select('recipe_id, dietary_flag'),

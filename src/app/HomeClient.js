@@ -52,6 +52,15 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Review &amp; Edit</p>
         <button onClick={onDiscard} className="text-xs text-gray-500 hover:text-white underline">✕ Discard</button>
       </div>
+      {/* Display extracted categories */}
+      {(draft.cuisine || draft.meal_types?.length > 0 || draft.dietary_flags?.length > 0 || draft.cooking_styles?.length > 0) && (
+        <div className="p-3 bg-[#0E1117] border border-gray-700 rounded text-xs space-y-1">
+          {draft.cuisine && <p><span className="text-gray-500">🌍 Cuisine:</span> {draft.cuisine}</p>}
+          {draft.meal_types?.length > 0 && <p><span className="text-gray-500">🍽 Meal:</span> {draft.meal_types.join(', ')}</p>}
+          {draft.dietary_flags?.length > 0 && <p><span className="text-gray-500">🥗 Dietary:</span> {draft.dietary_flags.join(', ')}</p>}
+          {draft.cooking_styles?.length > 0 && <p><span className="text-gray-500">🔥 Cooking:</span> {draft.cooking_styles.join(', ')}</p>}
+        </div>
+      )}
       <textarea
         value={markdown} onChange={e => setMarkdown(e.target.value)} rows={20}
         className="w-full bg-[#161B22] border border-gray-700 rounded px-3 py-2 text-sm font-mono leading-relaxed focus:outline-none focus:border-[#D35400] resize-y"
