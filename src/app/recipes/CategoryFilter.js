@@ -43,12 +43,12 @@ const COOKING_STYLES = [
   { id: 'fermenting', label: 'Fermenting' },
 ]
 
-const chipBase = 'px-2.5 py-1 text-xs font-bold rounded-full border transition-colors cursor-pointer select-none'
-const chipActive = 'bg-[#D35400] border-[#D35400] text-white'
-const chipInactive = 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
-
 export default function CategoryFilter({ filters, onChange }) {
-  const [showAllCooking, setShowAllCooking] = useState(false)
+  const [openSections, setOpenSections] = useState({ mealTypes: true, dietary: true, cooking: true })
+
+  function toggleSection(section) {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
 
   function toggleMealType(id) {
     const next = filters.mealTypes.includes(id)
@@ -72,74 +72,84 @@ export default function CategoryFilter({ filters, onChange }) {
   }
 
   const hasFilters = filters.mealTypes.length > 0 || filters.dietaryFlags.length > 0 || filters.cookingStyles.length > 0
-  const visibleCooking = showAllCooking ? COOKING_STYLES : COOKING_STYLES.slice(0, 6)
+  const activeCount = filters.mealTypes.length + filters.dietaryFlags.length + filters.cookingStyles.length
+
+  function FilterSection({ title, items, selected, onToggle, sectionKey, activeCount: count }) {
+    return (
+      <div className="border-b border-gray-800 last:border-b-0">
+        <button
+          onClick={() => toggleSection(sectionKey)}
+          className="w-full flex items-center justify-between px-0 py-3 text-left hover:bg-gray-800/30 transition-colors rounded"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{title}</span>
+            {count > 0 && (
+              <span className="text-xs bg-[#D35400] text-white px-1.5 py-0.5 rounded-full font-bold">{count}</span>
+            )}
+          </div>
+          <span className="text-gray-600 transition-transform" style={{ transform: openSections[sectionKey] ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            ▼
+          </span>
+        </button>
+
+        {openSections[sectionKey] && (
+          <div className="pb-3 space-y-2">
+            {items.map(item => (
+              <label key={item.id} className="flex items-center gap-2.5 cursor-pointer px-0 py-1 text-sm text-gray-300 hover:text-white transition-colors">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(item.id)}
+                  onChange={() => onToggle(item.id)}
+                  className="w-4 h-4 rounded border-gray-600 bg-gray-800 checked:bg-[#D35400] checked:border-[#D35400] cursor-pointer"
+                />
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-3 pb-4 border-b border-gray-800 mb-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Filter by Category</span>
+    <div className="bg-[#0E1117] border border-gray-800 rounded p-4 mb-5">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-bold text-gray-400">FILTERS</span>
         {hasFilters && (
           <button
             onClick={() => onChange({ mealTypes: [], dietaryFlags: [], cookingStyles: [] })}
             className="text-xs text-[#D35400] hover:text-[#E67E22] font-bold transition-colors"
           >
-            Clear filters
+            Clear all ({activeCount})
           </button>
         )}
       </div>
 
-      {/* Meal Type */}
-      <div>
-        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Meal Type</p>
-        <div className="flex flex-wrap gap-1.5">
-          {MEAL_TYPES.map(m => (
-            <button
-              key={m.id}
-              onClick={() => toggleMealType(m.id)}
-              className={`${chipBase} ${filters.mealTypes.includes(m.id) ? chipActive : chipInactive}`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Dietary */}
-      <div>
-        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Dietary</p>
-        <div className="flex flex-wrap gap-1.5">
-          {DIETARY_FLAGS.map(d => (
-            <button
-              key={d.id}
-              onClick={() => toggleDietary(d.id)}
-              className={`${chipBase} ${filters.dietaryFlags.includes(d.id) ? chipActive : chipInactive}`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Cooking Style */}
-      <div>
-        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Cooking Method</p>
-        <div className="flex flex-wrap gap-1.5">
-          {visibleCooking.map(c => (
-            <button
-              key={c.id}
-              onClick={() => toggleCooking(c.id)}
-              className={`${chipBase} ${filters.cookingStyles.includes(c.id) ? chipActive : chipInactive}`}
-            >
-              {c.label}
-            </button>
-          ))}
-          <button
-            onClick={() => setShowAllCooking(v => !v)}
-            className={`${chipBase} border-gray-800 text-gray-600 hover:text-gray-400`}
-          >
-            {showAllCooking ? 'Less ▴' : `+${COOKING_STYLES.length - 6} more ▾`}
-          </button>
-        </div>
+      <div className="space-y-0">
+        <FilterSection
+          title="Meal Type"
+          items={MEAL_TYPES}
+          selected={filters.mealTypes}
+          onToggle={toggleMealType}
+          sectionKey="mealTypes"
+          activeCount={filters.mealTypes.length}
+        />
+        <FilterSection
+          title="Dietary"
+          items={DIETARY_FLAGS}
+          selected={filters.dietaryFlags}
+          onToggle={toggleDietary}
+          sectionKey="dietary"
+          activeCount={filters.dietaryFlags.length}
+        />
+        <FilterSection
+          title="Cooking Method"
+          items={COOKING_STYLES}
+          selected={filters.cookingStyles}
+          onToggle={toggleCooking}
+          sectionKey="cooking"
+          activeCount={filters.cookingStyles.length}
+        />
       </div>
     </div>
   )
