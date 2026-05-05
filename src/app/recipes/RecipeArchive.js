@@ -497,7 +497,17 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   }, [catFilters, recipes.length])
 
   const filtered = recipes
-    .filter(r => {
+    .filter((r, idx) => {
+      // DEBUG: Log first recipe on category filter
+      if (idx === 0 && (catFilters.mealTypes.length > 0 || catFilters.dietaryFlags.length > 0 || catFilters.cookingStyles.length > 0)) {
+        console.log('[RecipeArchive.filter] Cat filters active:', catFilters, 'First recipe:', {
+          title: r.title,
+          meal_types: r.meal_types,
+          dietary_flags: r.dietary_flags,
+          cooking_styles: r.cooking_styles,
+        })
+      }
+
       // Source filter
       if (sourceFilter === 'beverage') {
         if (r.recipe_type !== 'beverage') return false
@@ -574,7 +584,7 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
       </div>
 
       {/* Results count when filtered */}
-      {(search || sourceFilter !== 'all') && (
+      {(search || sourceFilter !== 'all' || catFilters.mealTypes.length > 0 || catFilters.dietaryFlags.length > 0 || catFilters.cookingStyles.length > 0) && (
         <p className="text-xs text-gray-500 mb-3">
           {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           {pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
