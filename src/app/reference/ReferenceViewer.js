@@ -207,7 +207,7 @@ function RenderedContent({ markdown }) {
 
 // ── Add / Edit form ───────────────────────────────────────────────────────────
 
-function StandardForm({ initial, onSave, onCancel }) {
+function StandardForm({ initial, onSave, onCancel, existingCategories = [] }) {
   const [category, setCategory]   = useState(initial?.category ?? '')
   const [title, setTitle]         = useState(initial?.title ?? '')
   const [content, setContent]     = useState(initial?.content_markdown ?? '')
@@ -243,7 +243,12 @@ function StandardForm({ initial, onSave, onCancel }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Category</label>
-          <input value={category} onChange={e => setCategory(e.target.value)} required className={inputCls} placeholder="e.g. Thickening" />
+          <select value={category} onChange={e => setCategory(e.target.value)} required className={inputCls}>
+            <option value="">Select a category…</option>
+            {existingCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Title</label>
@@ -280,7 +285,7 @@ function StandardForm({ initial, onSave, onCancel }) {
 
 // ── Individual standard card ──────────────────────────────────────────────────
 
-function StandardCard({ standard, isAdmin, onUpdate, onDelete }) {
+function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions = [] }) {
   const detailsRef              = useRef()
   const [editing, setEditing]   = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -328,6 +333,7 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete }) {
         {editing ? (
           <StandardForm
             initial={standard}
+            existingCategories={categoryOptions}
             onSave={updated => { onUpdate(updated); setEditing(false) }}
             onCancel={() => setEditing(false)}
           />
@@ -368,6 +374,12 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
     groups[s.category].push(s)
   }
   const categoryKeys = sortCategories(groups)
+  const allCategories = sortCategories(
+    standards.reduce((acc, s) => {
+      if (!acc[s.category]) acc[s.category] = []
+      return acc
+    }, {})
+  )
 
   return (
     <div className="space-y-10">
@@ -403,6 +415,7 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
                     key={s.id}
                     standard={s}
                     isAdmin={isAdmin}
+                    categoryOptions={allCategories}
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                   />
