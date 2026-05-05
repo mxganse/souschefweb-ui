@@ -62,6 +62,20 @@ export default async function RecipesPage() {
     category_overrides: mealTypeMap[r.id]?.overrides ?? {},
   }))
 
+  // DEBUG: Log enrichment
+  console.log('[recipes/page.js] Enrichment summary:', {
+    totalRecipes: recipes?.length ?? 0,
+    mealTypesCount: Object.keys(mealTypeMap).length,
+    dietaryFlagsCount: Object.keys(dietaryMap).length,
+    cookingStylesCount: Object.keys(cookingMap).length,
+    sample: enriched?.[0] ? {
+      title: enriched[0].title,
+      meal_types: enriched[0].meal_types,
+      dietary_flags: enriched[0].dietary_flags,
+      cooking_styles: enriched[0].cooking_styles,
+    } : null,
+  })
+
   return (
     <RecipeArchive
       initialRecipes={enriched}
