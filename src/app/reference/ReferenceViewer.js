@@ -350,6 +350,8 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions =
 export default function ReferenceViewer({ initialData, isAdmin }) {
   const [standards, setStandards] = useState(initialData)
   const [search, setSearch]       = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+
   function handleUpdate(updated) {
     setStandards(prev => prev.map(s => s.id === updated.id ? updated : s))
   }
@@ -359,13 +361,15 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
   }
 
   const filtered = standards.filter(s => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      s.title?.toLowerCase().includes(q) ||
-      s.content_markdown?.toLowerCase().includes(q) ||
-      s.category?.toLowerCase().includes(q)
+    const matchesSearch = !search || (
+      s.title?.toLowerCase().includes(search.toLowerCase()) ||
+      s.content_markdown?.toLowerCase().includes(search.toLowerCase()) ||
+      s.category?.toLowerCase().includes(search.toLowerCase())
     )
+    if (!matchesSearch) return false
+
+    const refType = inferReferenceType(s.category)
+    return typeFilter === 'all' || refType === typeFilter
   })
 
   const groups = {}
@@ -390,13 +394,25 @@ export default function ReferenceViewer({ initialData, isAdmin }) {
         </div>
       </div>
 
-      <input
-        type="search"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search reference material…"
-        className="w-full bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors"
-      />
+      <div className="flex gap-3">
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search reference material…"
+          className="flex-1 bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors"
+        />
+        <select
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+          className="bg-[#161B22] border border-gray-700 rounded px-4 py-2.5 text-base focus:outline-none focus:border-[#D35400] transition-colors text-gray-300 cursor-pointer"
+        >
+          <option value="all">All Types</option>
+          <option value="Scientific Standard">Scientific Standard</option>
+          <option value="BOH Manual">BOH Manual</option>
+          <option value="Field Note">Field Note</option>
+        </select>
+      </div>
 
       {categoryKeys.length === 0 ? (
         <p className="text-gray-500 text-sm text-center py-12">

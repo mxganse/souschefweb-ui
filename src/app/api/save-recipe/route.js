@@ -1,8 +1,9 @@
 import { createSessionClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/auth'
 
+// Only alcohol/spirit-specific keywords to avoid false positives with food recipes
 const BEVERAGE_KEYWORDS = [
-  'shake', 'stir', 'garnish', 'strainer', 'jigger', 'cocktail', 'spirit',
+  'jigger', 'cocktail', 'spirit',
   'bourbon', 'gin', 'vodka', 'rum', 'whiskey', 'vermouth', 'bitters',
   'liqueur', 'amaro', 'mezcal', 'tequila',
 ]
@@ -88,8 +89,8 @@ export async function POST(request) {
       }
     }
 
-    // ── Detect beverage type ───────────────────────────────────────────────
-    const detectedType = recipeType || (detectBeverage(title, markdown) ? 'beverage' : 'food')
+    // ── Detect beverage type (prefer AI classification over keyword detection) ────
+    const detectedType = recipeType || (meal_types.includes('beverage') ? 'beverage' : (detectBeverage(title, markdown) ? 'beverage' : 'food'))
 
     // ── Save ───────────────────────────────────────────────────────────────
     const { data: recipe, error: recipeError } = await supabase
