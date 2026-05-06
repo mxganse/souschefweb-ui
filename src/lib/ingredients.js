@@ -379,26 +379,32 @@ export function convertUnit(quantity, fromUnit, toUnit) {
  * @returns {string[]}
  */
 export function parseMarkdownIngredients(markdown) {
-  // Find the ingredients section (case-insensitive)
-  const sectionMatch = markdown.match(
-    /^##\s+ingredients\b[^\n]*/im
-  );
-  if (!sectionMatch) return [];
-
-  const startIdx = sectionMatch.index + sectionMatch[0].length;
-  let section = markdown.slice(startIdx);
-
-  // Trim at the next ## heading
-  const nextHeading = section.match(/^##\s/m);
-  if (nextHeading) section = section.slice(0, nextHeading.index);
-
-  const lines = section.split('\n');
-  const results = [];
-  for (const line of lines) {
-    const m = line.match(/^[-*]\s+(.+)/);
-    if (m) results.push(m[1].trim());
+  // Primary: ## Ingredients heading format
+  const sectionMatch = markdown.match(/^##\s+ingredients\b[^\n]*/im);
+  if (sectionMatch) {
+    const startIdx = sectionMatch.index + sectionMatch[0].length;
+    let section = markdown.slice(startIdx);
+    const nextHeading = section.match(/^##\s/m);
+    if (nextHeading) section = section.slice(0, nextHeading.index);
+    const results = [];
+    for (const line of section.split('\n')) {
+      const m = line.match(/^[-*]\s+(.+)/);
+      if (m) results.push(m[1].trim());
+    }
+    return results;
   }
-  return results;
+
+  // Fallback: **Ingredients:** bold format (legacy Instagram worker output)
+  const boldMatch = markdown.match(/\*\*Ingredients:\*\*\s*\n([\s\S]*?)(?=\n\*\*[A-Za-z]|\n##\s|$)/i);
+  if (boldMatch) {
+    return boldMatch[1]
+      .split('\n')
+      .filter(l => /^\s*[-*]\s+/.test(l))
+      .map(l => l.replace(/^\s*[-*]\s+/, '').trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 // ---------------------------------------------------------------------------

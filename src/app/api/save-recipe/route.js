@@ -11,9 +11,12 @@ function detectBeverage(title, markdown) {
 
 function parseMarkdown(markdown) {
   const titleMatch = markdown.match(/^#\s+(.+)$/m)
+    || markdown.match(/\*\*Dish Title:\s*(.*?)\*\*/i)
   const title = titleMatch ? titleMatch[1].trim() : 'Untitled Recipe'
 
+  // Try ## Ingredients heading format, then **Ingredients:** bold format
   const ingMatch = markdown.match(/##\s+Ingredients\s*\n([\s\S]*?)(?=\n##|\n*$)/)
+    || markdown.match(/\*\*Ingredients:\*\*\s*\n([\s\S]*?)(?=\n\*\*[A-Za-z]|\n##\s|$)/i)
   const ingredients = []
   if (ingMatch) {
     for (const line of ingMatch[1].split('\n')) {
@@ -35,11 +38,14 @@ function getContentFingerprint(markdown) {
 
 export async function POST(request) {
   try {
-    const { markdown, sourceType, sourceUrl = null, creator = null, source_brand = null, force = false, recipeType = null, cuisine = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
+    const { markdown, title: titleOverride = null, sourceType, sourceUrl = null, creator = null, source_brand = null, force = false, recipeType = null, cuisine = null, meal_types = [], dietary_flags = [], cooking_styles = [], category_confidence = null } = await request.json()
     console.log('[save-recipe] Received:', { cuisine, meal_types, dietary_flags, cooking_styles })
     if (!markdown) return Response.json({ error: 'markdown is required' }, { status: 400 })
 
-    const { title, ingredients } = parseMarkdown(markdown)
+    const parsed = parseMarkdown(markdown)
+    // Use the pre-parsed title from the worker when the markdown lacks a standard # heading
+    const title = (parsed.title === 'Untitled Recipe' && titleOverride) ? titleOverride : parsed.title
+    const { ingredients } = parsed
     const supabase = await createSessionClient()
 
     const { data: { user } } = await supabase.auth.getUser()
