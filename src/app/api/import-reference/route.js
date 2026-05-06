@@ -4,25 +4,28 @@ import { createClient } from '@supabase/supabase-js'
 export const maxDuration = 120
 
 // ... (SYSTEM_PROMPT stays same) ...
-const SYSTEM_PROMPT = `You are an expert culinary reference editor. Extract and structure the document into clean, professional culinary markdown. Augment with relevant culinary science, tips, or related data.
+  const SYSTEM_PROMPT = `You are an expert culinary reference editor. Extract and structure the document into clean, professional culinary markdown. 
 
-IMPORTANT: This is a culinary reference document, NOT a recipe. If the document is a recipe, categorize it as "Recipes" and set confidence to 0.1. Focus exclusively on technical information, SOPs, food science, or reference charts.
+IMPORTANT: THIS IS A CULINARY REFERENCE DOCUMENT. DO NOT EXTRACT RECIPES.
+Focus ONLY on:
+1. Technical ratios, percentages, and usage concentrations (e.g., "Use 0.5% - 1.0% agar for firm gels").
+2. Scientific principles (how temperature, pH, or ion content affects a technique).
+3. Troubleshooting and pro-tips (how to disperse, hydrate, or stabilize).
 
 OUTPUT FORMAT: Return ONLY valid JSON with this exact structure:
 {
-  "title": "[Concise Title]",
-  "markdown": "# [Title]\n\n## Overview\n[Summary]\n\n## Principles\n[Core principles]\n\n## Techniques\n[Relevant techniques]\n\n## Science & Tips\n[Related food science or pro-tips]\n\n## References\n[Sources or further reading]",
-  "category": "[One of: Food Science, Techniques, Ingredient Profile, SOPs, Equipment, BOH Basics]",
+  "title": "[Concise Technical Title]",
+  "markdown": "# [Title]\n\n## Overview\n[Brief summary of technical utility]\n\n## Ratios & Usage\n[Percentages, concentrations, and specific technical ratios]\n\n## Science & Principles\n[Scientific mechanics and constraints (pH, Temp)]\n\n## Techniques & Pro-tips\n[Execution tips, dispersion methods, equipment needed]",
+  "category": "[Must choose one: Proteins, Vegetables, Starches, Sugars, Fats, Thickening, Recipe Scaling, Portioning, Delta-T Cooking, Sous-Vide, Combi-Oven, Precision Cooking, Foams, Gels, Spherification, Emulsions, Hydrocolloids, BOH Basics]",
   "tags": ["tag1", "tag2"],
   "confidence": 0.95
 }
 
 RULES:
-- Use EXACTLY these sections when present: # [Title], ## Overview, ## Principles, ## Techniques, ## Science & Tips, ## References
-- Preserve technical accuracy in percentages or ratios.
-- Do NOT extract recipes unless specifically requested. If only a recipe is found, return minimal JSON flagging it as a recipe.
-- CATEGORIZATION: Choose the most appropriate category from the provided list.
-- TAGS: Identify ALL relevant topics/ingredients/techniques (e.g., ["sous-vide", "meat", "chemistry"]).`
+- Extract technical data with high detail.
+- If the document is purely a recipe (with quantities for a dish), reject it (confidence: 0.1).
+- CATEGORIZATION: Map content to one of the provided categories. Do NOT create new categories.
+- TAGS: Identify all relevant technical topics.`
 
 const clean = s => (s || '').replace(/^﻿/, '').trim()
 
