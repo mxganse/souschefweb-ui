@@ -121,9 +121,19 @@ function parseQuantityStr(str) {
  * @param {string} rawText
  * @returns {{ raw, quantity, unit, name, note }}
  */
+const UNICODE_FRACTIONS = {
+  '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4',
+  '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8',
+  '⅙': '1/6', '⅚': '5/6', '⅕': '1/5', '⅖': '2/5', '⅗': '3/5', '⅘': '4/5',
+};
+
+function normalizeUnicodeFractions(str) {
+  return str.replace(/[½⅓⅔¼¾⅛⅜⅝⅞⅙⅚⅕⅖⅗⅘]/g, c => UNICODE_FRACTIONS[c] || c);
+}
+
 export function parseIngredient(rawText) {
   const raw = rawText;
-  let text = rawText.trim();
+  let text = normalizeUnicodeFractions(rawText.trim());
 
   // --- Extract trailing note in parentheses, e.g. "(70%)" or "(room temperature)"
   let parenNote = null;
