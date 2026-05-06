@@ -39,17 +39,36 @@ function StatusBox({ status, error, result }) {
   }
 
   if (result) return (
-    <div className="mt-4 p-4 bg-[#161B22] border border-gray-700 rounded space-y-2">
-      <p className="text-[#D35400] font-bold text-lg">Processed: {result.category}</p>
-      <p className="text-xs text-gray-500">Categorized: {result.category} · {result.tags.length} tags · AI Confidence: {Math.round(result.confidence * 100)}%</p>
-      <div className="text-sm text-gray-300 mt-2 whitespace-pre-wrap max-h-60 overflow-y-auto font-mono text-[10px] bg-black p-2 rounded">
-        {result.markdown.substring(0, 300)}...
+    <div className="mt-4 p-4 bg-[#161B22] border border-gray-700 rounded space-y-4">
+      <div className="space-y-1">
+        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Category</label>
+        <input 
+          value={result.category} 
+          onChange={e => setResult({...result, category: e.target.value})} 
+          className="w-full bg-black border border-gray-600 rounded px-2 py-1 text-sm text-white"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Title</label>
+        <input 
+          value={result.title} 
+          onChange={e => setResult({...result, title: e.target.value})} 
+          className="w-full bg-black border border-gray-600 rounded px-2 py-1 text-sm text-white"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide">Content</label>
+        <textarea 
+          value={result.markdown} 
+          onChange={e => setResult({...result, markdown: e.target.value})} 
+          className="w-full h-64 bg-black border border-gray-600 rounded px-2 py-1 text-xs font-mono text-gray-300"
+        />
       </div>
       <button
         onClick={handleSave}
-        className="inline-block mt-3 text-sm text-[#D35400] hover:text-[#E67E22] underline"
+        className="w-full py-2 bg-[#D35400] text-white font-bold rounded hover:bg-[#E67E22] transition-colors"
       >
-        Save to Reference Library →
+        Approve and Save to Reference Library →
       </button>
     </div>
   )
