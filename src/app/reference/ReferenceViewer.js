@@ -285,9 +285,9 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions =
   const detailsRef              = useRef()
   const [editing, setEditing]   = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   async function handleDelete() {
-    if (!window.confirm(`Delete "${standard.title}"? This cannot be undone.`)) return
     setDeleting(true)
     const res = await fetch('/api/admin/reference', {
       method: 'DELETE',
@@ -295,7 +295,11 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions =
       body: JSON.stringify({ id: standard.id }),
     })
     if (res.ok) onDelete(standard.id)
-    else setDeleting(false)
+    else {
+      setDeleting(false)
+      setShowConfirm(false)
+      // TODO: Add toast notification here
+    }
   }
 
   const referenceType = inferReferenceType(standard.category)
@@ -311,19 +315,39 @@ function StandardCard({ standard, isAdmin, onUpdate, onDelete, categoryOptions =
       <div className="px-4 pb-4 pt-3 border-t border-gray-800">
         {isAdmin && !editing && (
           <div className="flex justify-end gap-4 mb-3">
-            <button
-              onClick={() => setEditing(true)}
-              className="text-xs text-gray-500 hover:text-[#D35400] transition-colors"
-            >
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-              {deleting ? '…' : 'Delete'}
-            </button>
+            {showConfirm ? (
+              <>
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="text-xs text-gray-500 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs font-bold text-red-500 hover:text-red-400 transition-colors"
+                >
+                  {deleting ? 'Deleting…' : 'Confirm Delete'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-gray-500 hover:text-[#D35400] transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={deleting}
+                  className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         )}
         {editing ? (
