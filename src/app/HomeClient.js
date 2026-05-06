@@ -34,6 +34,7 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
     try {
       const { duplicate: dup, result } = await saveDraft({ ...draft, markdown })
       if (dup) { setDuplicate(dup); setSaving(false); return }
+      window.dispatchEvent(new CustomEvent('souschef:recipe-saved', { detail: result }))
       onSave(result)
     } catch (err) { setError(err.message); setSaving(false) }
   }
@@ -42,6 +43,7 @@ function PreviewEditor({ draft, onSave, onDiscard }) {
     setSaving(true); setDuplicate(null); setError(null)
     try {
       const { result } = await saveDraft({ ...draft, markdown, force: true })
+      window.dispatchEvent(new CustomEvent('souschef:recipe-saved', { detail: result }))
       onSave(result)
     } catch (err) { setError(err.message); setSaving(false) }
   }
@@ -363,6 +365,7 @@ function BulkPhotoTab({ onSaved }) {
           update(item.id, { status: 'duplicate', note: dup.error })
         } else {
           update(item.id, { status: 'done', title: result.title })
+          window.dispatchEvent(new CustomEvent('souschef:recipe-saved', { detail: result }))
         }
       } catch (err) {
         update(item.id, { status: 'error', note: err.message })

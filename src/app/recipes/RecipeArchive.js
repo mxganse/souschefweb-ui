@@ -480,6 +480,19 @@ export default function RecipeArchive({ initialRecipes, currentUserId, isAdmin }
   // Sync when server re-fetches (e.g. after router.refresh())
   useEffect(() => { setRecipes(initialRecipes) }, [initialRecipes])
 
+  // Optimistic prepend when a recipe is saved from the import UI
+  useEffect(() => {
+    function handleNewRecipe(e) {
+      setRecipes(prev => {
+        if (prev.some(r => r.id === e.detail.id)) return prev
+        return [e.detail, ...prev]
+      })
+      document.getElementById('archive')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    window.addEventListener('souschef:recipe-saved', handleNewRecipe)
+    return () => window.removeEventListener('souschef:recipe-saved', handleNewRecipe)
+  }, [])
+
   function handleSearch(v)  { setSearch(v);       setPage(1) }
   function handleSource(v)  { setSourceFilter(v); setPage(1) }
   function handleSort(v)    { setSort(v);          setPage(1) }

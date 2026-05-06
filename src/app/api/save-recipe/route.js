@@ -160,7 +160,25 @@ export async function POST(request) {
       }
     }
 
-    return Response.json({ id: recipe.id, title, ingredientCount: ingredients.length })
+    return Response.json({
+      id: recipe.id,
+      title,
+      ingredientCount: ingredients.length,
+      category: creator || null,
+      cuisine: cuisine || null,
+      source_type: sourceType,
+      source_brand: source_brand || null,
+      source_url: sourceUrl || null,
+      created_at: new Date().toISOString(),
+      instructions_markdown: markdown,
+      recipe_type: detectedType,
+      user_id: user.id,
+      submitted_by: submittedBy,
+      meal_types: meal_types || [],
+      dietary_flags: dietary_flags || [],
+      cooking_styles: cooking_styles || [],
+      category_overrides: {},
+    })
 
   } catch (err) {
     console.error('save-recipe error:', err)
