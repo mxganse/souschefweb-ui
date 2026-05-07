@@ -1,5 +1,6 @@
 import { createSessionClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/auth'
+import { getUserRecipeViewScope } from '@/lib/auth-server'
 import HomeClient from './HomeClient'
 import RecipeArchive from './recipes/RecipeArchive'
 
@@ -7,23 +8,37 @@ export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const supabase = await createSessionClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const [
-    { data: { user } },
-    { data: recipes, error },
-    { data: mealTypes },
-    { data: dietaryFlags },
-    { data: cookingStyles },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from('recipes')
-      .select('id, title, category, cuisine, source_type, source_brand, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type')
-      .order('created_at', { ascending: false }),
-    supabase.from('recipe_meal_types').select('recipe_id, meal_type, is_admin_override, original_ai_value'),
-    supabase.from('recipe_dietary_flags').select('recipe_id, dietary_flag'),
-    supabase.from('recipe_cooking_styles').select('recipe_id, cooking_style'),
-  ])
+  const { scope } = await getUserRecipeViewScope(user)
+
+  const recipeSelect = 'id, title, category, cuisine, source_type, source_brand, source_url, created_at, instructions_markdown, submitted_by, user_id, recipe_type'
+
+  let recipes, mealTypes, dietaryFlags, cookingStyles, error
+
+  if (scope === 'own_only' && user) {
+    // Fetch only this user's recipes, then filter tag tables to those IDs
+    const recipesRes = await supabase.from('recipes').select(recipeSelect).eq('user_id', user.id).order('created_at', { ascending: false })
+    recipes = recipesRes.data
+    error = recipesRes.error
+    const ids = recipes?.map(r => r.id) ?? []
+    if (ids.length > 0) {
+      ;[{ data: mealTypes }, { data: dietaryFlags }, { data: cookingStyles }] = await Promise.all([
+        supabase.from('recipe_meal_types').select('recipe_id, meal_type, is_admin_override, original_ai_value').in('recipe_id', ids),
+        supabase.from('recipe_dietary_flags').select('recipe_id, dietary_flag').in('recipe_id', ids),
+        supabase.from('recipe_cooking_styles').select('recipe_id, cooking_style').in('recipe_id', ids),
+      ])
+    } else {
+      mealTypes = []; dietaryFlags = []; cookingStyles = []
+    }
+  } else {
+    ;[{ data: recipes, error }, { data: mealTypes }, { data: dietaryFlags }, { data: cookingStyles }] = await Promise.all([
+      supabase.from('recipes').select(recipeSelect).order('created_at', { ascending: false }),
+      supabase.from('recipe_meal_types').select('recipe_id, meal_type, is_admin_override, original_ai_value'),
+      supabase.from('recipe_dietary_flags').select('recipe_id, dietary_flag'),
+      supabase.from('recipe_cooking_styles').select('recipe_id, cooking_style'),
+    ])
+  }
 
   if (error) {
     return (
