@@ -1,5 +1,6 @@
 import { createSessionClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/auth'
+import { getUserPermissions } from '@/lib/auth-server'
 import { redirect } from 'next/navigation'
 import ReferenceViewer from './ReferenceViewer'
 
@@ -22,6 +23,11 @@ export default async function ReferencePage() {
   ])
 
   if (!user) redirect('/login')
+
+  if (!isAdminUser(user)) {
+    const perms = await getUserPermissions(user.id)
+    if (!perms.can_access_reference) redirect('/')
+  }
 
   if (error) {
     return (

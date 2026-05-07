@@ -1,4 +1,6 @@
 import OpenAI from 'openai'
+import { createSessionClient } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth-server'
 
 export const maxDuration = 300
 
@@ -27,6 +29,12 @@ CATEGORIZATION RULES:
 - confidence: 0.0-1.0, lower if ambiguous`
 
 export async function POST(request) {
+  const sessionClient = await createSessionClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requirePermission(user, 'can_add_recipes', 'You do not have permission to import recipes.')
+  if (denied) return denied
+
   const { url, manualIngredients = '' } = await request.json()
 
   if (!url) {

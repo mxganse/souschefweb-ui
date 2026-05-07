@@ -1,5 +1,6 @@
 import { createSessionClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth-server'
 
 // Word-boundary regex to avoid substring false positives (gin→begin, rum→forum, etc.)
 const BEVERAGE_PATTERN = /\b(jigger|cocktail|bourbon|vodka|whiskey|vermouth|bitters|liqueur|amaro|mezcal|tequila)\b/i
@@ -50,6 +51,9 @@ export async function POST(request) {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const denied = await requirePermission(user, 'can_add_recipes', 'You do not have permission to add recipes.')
+    if (denied) return denied
 
     const submittedBy = !isAdminUser(user)
       ? (user.user_metadata?.full_name || user.email)

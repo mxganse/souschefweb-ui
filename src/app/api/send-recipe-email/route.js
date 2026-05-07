@@ -1,4 +1,5 @@
 import { createSessionClient } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth-server'
 import { buildPdf, safeName } from '@/lib/buildPdf'
 import { Resend } from 'resend'
 
@@ -10,6 +11,8 @@ export async function POST(request) {
   const supabase = await createSessionClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
+  const denied = await requirePermission(user, 'can_email_recipe', 'You do not have permission to email recipes.')
+  if (denied) return denied
 
   const body = await request.json()
   const { title, category, source_url, created_at, instructions_markdown } = body

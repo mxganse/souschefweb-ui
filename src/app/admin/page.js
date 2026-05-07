@@ -237,6 +237,23 @@ export default async function AdminPage() {
         </div>
       </section>
 
+      {/* User permissions */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Access Control</h2>
+        <div className="bg-[#161B22] border border-gray-800 rounded-lg px-4 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-200">User Permissions</p>
+            <p className="text-xs text-gray-500 mt-0.5">Grant or restrict each user's ability to add recipes, view the library, access reference material, and more.</p>
+          </div>
+          <a
+            href="/admin/permissions"
+            className="flex-shrink-0 ml-4 px-4 py-2 bg-[#D35400] hover:bg-[#E67E22] text-white text-xs font-bold rounded transition-colors"
+          >
+            Manage →
+          </a>
+        </div>
+      </section>
+
       {/* User management */}
       <UsersSection />
 

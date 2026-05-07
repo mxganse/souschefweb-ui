@@ -1,4 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
+import { requirePermission } from '@/lib/auth-server'
 import { buildPdf, safeName } from '@/lib/buildPdf'
 
 export async function GET(request) {
@@ -29,11 +30,11 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  // Auth check — must be logged in
-  const { createSessionClient } = await import('@/lib/supabase/server')
   const sessionClient = await createSessionClient()
   const { data: { user } } = await sessionClient.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
+  const denied = await requirePermission(user, 'can_export_pdf', 'You do not have permission to export PDFs.')
+  if (denied) return denied
 
   const body = await request.json()
   const { title, category, source_url, created_at, instructions_markdown } = body
